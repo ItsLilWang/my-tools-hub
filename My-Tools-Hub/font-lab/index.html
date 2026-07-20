@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Font Magic - Neumorphism</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+      /* Base Dark Neumorphism */
+      body {
+        background-color: #18181b; /* Nền tối (zinc-900) */
+        color: #e4e4e7;
+      }
+
+      /* Đổ bóng nổi (Flat/Raised) */
+      .neu-flat {
+        background: #18181b;
+        box-shadow:
+          8px 8px 16px #0a0a0b,
+          -8px -8px 16px #26262b;
+        border-radius: 2rem;
+      }
+
+      /* Đổ bóng chìm (Pressed/Input) */
+      .neu-pressed {
+        background: #18181b;
+        box-shadow:
+          inset 8px 8px 16px #0a0a0b,
+          inset -8px -8px 16px #26262b;
+        border-radius: 1.5rem;
+      }
+
+      /* Nút bấm (Button) */
+      .neu-btn {
+        background: #18181b;
+        box-shadow:
+          4px 4px 10px #0a0a0b,
+          -4px -4px 10px #26262b;
+        border-radius: 0.75rem;
+        transition: all 0.2s ease-in-out;
+        border: 1px solid transparent;
+      }
+      .neu-btn:hover {
+        color: #ef4444; /* Accent Red */
+      }
+      .neu-btn:active,
+      .neu-active {
+        box-shadow:
+          inset 4px 4px 8px #0a0a0b,
+          inset -4px -4px 8px #26262b;
+        color: #ef4444;
+      }
+
+      /* Tùy chỉnh thanh trượt (slider) phong cách chìm */
+      input[type="range"] {
+        -webkit-appearance: none;
+        width: 70px;
+        height: 6px;
+        background: #18181b;
+        box-shadow:
+          inset 2px 2px 5px #0a0a0b,
+          inset -2px -2px 5px #26262b;
+        border-radius: 4px;
+        outline: none;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #ef4444; /* Accent Red */
+        box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      input[type="range"]::-webkit-slider-thumb:hover {
+        transform: scale(1.2);
+      }
+
+      /* Dropdown style */
+      select {
+        appearance: none;
+        background-color: transparent;
+        color: #ef4444;
+        font-weight: bold;
+        max-width: 140px;
+      }
+      select option,
+      select optgroup {
+        background: #18181b;
+        color: #e4e4e7;
+      }
+      select:disabled {
+        opacity: 0.5;
+      }
+
+      /* Input text custom font */
+      .custom-font-input {
+        background: #18181b;
+        color: #e4e4e7;
+      }
+      .custom-font-input::placeholder {
+        color: #52525b;
+      }
+
+      /* Thanh cuộn đỏ */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #18181b;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #ef4444;
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body
+    class="min-h-screen flex items-center justify-center p-6 font-sans antialiased"
+  >
+    <div class="neu-flat w-full max-w-5xl p-8 flex flex-col gap-8">
+      <!-- Header & Controls -->
+      <div class="flex flex-wrap justify-between items-center gap-6 pb-2">
+        <!-- Nút Back & Logo -->
+        <div class="flex items-center gap-4">
+          <a
+            href="../index.html"
+            class="neu-btn w-10 h-10 flex items-center justify-center text-gray-500 hover:text-red-500 transition"
+            title="Về Hub"
+          >
+            <i class="fa-solid fa-arrow-left"></i>
+          </a>
+          <h1
+            class="text-2xl font-extrabold tracking-widest text-red-500 uppercase flex items-center gap-2"
+          >
+            <i class="fa-solid fa-layer-group"></i> FontLab
+          </h1>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-6">
+          <!-- Ratio Buttons -->
+          <div class="flex gap-3">
+            <button
+              onclick="changeRatio('1/1', this)"
+              data-ratio="1/1"
+              class="ratio-btn neu-btn px-4 py-2 text-xs font-bold text-gray-500"
+            >
+              1:1
+            </button>
+            <button
+              onclick="changeRatio('3/4', this)"
+              data-ratio="3/4"
+              class="ratio-btn neu-btn px-4 py-2 text-xs font-bold text-gray-500"
+            >
+              3:4
+            </button>
+            <button
+              onclick="changeRatio('16/9', this)"
+              data-ratio="16/9"
+              class="ratio-btn neu-btn px-4 py-2 text-xs font-bold neu-active text-red-500"
+            >
+              16:9
+            </button>
+          </div>
+
+          <div class="w-px h-6 bg-zinc-800"></div>
+
+          <div class="flex flex-wrap gap-4">
+            <button
+              onclick="swapFonts()"
+              class="neu-btn px-4 py-2 text-sm font-semibold text-gray-400 flex items-center gap-2"
+            >
+              <i class="fa-solid fa-arrow-right-arrow-left"></i> Swap
+            </button>
+            <button
+              onclick="randomFonts()"
+              class="neu-btn px-4 py-2 text-sm font-semibold text-gray-400 flex items-center gap-2"
+            >
+              <i class="fa-solid fa-dice"></i> Random
+            </button>
+            <button
+              onclick="resetAll()"
+              class="neu-btn px-4 py-2 text-sm font-semibold text-gray-400 flex items-center gap-2"
+              title="Về mặc định"
+            >
+              <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+            <button
+              onclick="downloadInfo()"
+              class="neu-btn px-4 py-2 text-sm font-semibold text-red-500 flex items-center gap-2"
+            >
+              <i class="fa-solid fa-download"></i> DL
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-center w-full">
+        <!-- Canvas chìm -->
+        <div
+          id="preview-canvas"
+          class="neu-pressed h-[65vh] max-w-full flex flex-col justify-center items-center p-12 gap-8 transition-all duration-500 ease-in-out relative overflow-hidden"
+          style="aspect-ratio: 16/9"
+        >
+          <!-- TEXT 1 -->
+          <div class="w-full flex flex-col items-center gap-3">
+            <!-- Toggle luôn hiện, bấm được cả mobile lẫn desktop -->
+            <button
+              onclick="togglePanel('panel-text-1')"
+              class="neu-btn w-8 h-8 flex items-center justify-center text-gray-500 text-xs shrink-0"
+              title="Tùy chỉnh Text 1"
+            >
+              <i class="fa-solid fa-sliders"></i>
+            </button>
+
+            <!-- Panel điều khiển, ẩn mặc định -->
+            <div
+              id="panel-text-1"
+              class="hidden flex-wrap items-center justify-center gap-3 px-4 py-3 neu-flat w-fit max-w-full"
+            >
+              <span class="text-xs text-red-500 font-bold uppercase"
+                ><i class="fa-solid fa-heading"></i> T1</span
+              >
+              <div class="h-4 w-px bg-zinc-700"></div>
+
+              <button
+                onclick="toggleLock(this, 'text-1-input')"
+                class="text-gray-500 hover:text-red-500 transition"
+                title="Khóa"
+              >
+                <i class="fa-solid fa-lock-open"></i>
+              </button>
+
+              <select
+                class="font-picker outline-none cursor-pointer p-1 text-sm"
+                data-target="text-1-input"
+              ></select>
+
+              <form class="custom-font-form flex items-center gap-1">
+                <input
+                  type="text"
+                  placeholder="Font khác..."
+                  class="custom-font-input neu-pressed text-xs px-2 py-1 outline-none w-24"
+                  data-target="text-1-input"
+                />
+                <button
+                  type="submit"
+                  class="text-gray-500 hover:text-red-500 transition"
+                  title="Áp dụng font custom"
+                >
+                  <i class="fa-solid fa-check"></i>
+                </button>
+              </form>
+
+              <div class="flex items-center gap-2 text-xs ml-2 text-gray-400">
+                <i class="fa-solid fa-text-height"></i>
+                <input
+                  type="range"
+                  min="16"
+                  max="150"
+                  value="70"
+                  oninput="
+                    updateStyle('text-1-input', 'fontSize', this.value + 'px')
+                  "
+                />
+              </div>
+              <div class="flex items-center gap-2 text-xs text-gray-400">
+                <i class="fa-solid fa-bold"></i>
+                <input
+                  type="range"
+                  min="100"
+                  max="900"
+                  step="100"
+                  value="800"
+                  oninput="
+                    updateStyle('text-1-input', 'fontWeight', this.value)
+                  "
+                />
+              </div>
+
+              <span class="custom-font-status text-[10px] text-gray-500 w-full text-center"></span>
+            </div>
+
+            <div
+              id="text-1-input"
+              contenteditable="true"
+              data-locked="false"
+              class="w-full text-center text-white outline-none transition-all bg-transparent"
+              style="font-size: 70px; font-weight: 800; line-height: 1.1"
+            >
+              NEUMORPHISM.
+            </div>
+          </div>
+
+          <!-- TEXT 2 -->
+          <div class="w-full flex flex-col items-center gap-3">
+            <button
+              onclick="togglePanel('panel-text-2')"
+              class="neu-btn w-8 h-8 flex items-center justify-center text-gray-500 text-xs shrink-0"
+              title="Tùy chỉnh Text 2"
+            >
+              <i class="fa-solid fa-sliders"></i>
+            </button>
+
+            <div
+              id="panel-text-2"
+              class="hidden flex-wrap items-center justify-center gap-3 px-4 py-3 neu-flat w-fit max-w-full"
+            >
+              <span class="text-xs text-red-500 font-bold uppercase"
+                ><i class="fa-solid fa-align-left"></i> T2</span
+              >
+              <div class="h-4 w-px bg-zinc-700"></div>
+
+              <button
+                onclick="toggleLock(this, 'text-2-input')"
+                class="text-gray-500 hover:text-red-500 transition"
+                title="Khóa"
+              >
+                <i class="fa-solid fa-lock-open"></i>
+              </button>
+
+              <select
+                class="font-picker outline-none cursor-pointer p-1 text-sm"
+                data-target="text-2-input"
+              ></select>
+
+              <form class="custom-font-form flex items-center gap-1">
+                <input
+                  type="text"
+                  placeholder="Font khác..."
+                  class="custom-font-input neu-pressed text-xs px-2 py-1 outline-none w-24"
+                  data-target="text-2-input"
+                />
+                <button
+                  type="submit"
+                  class="text-gray-500 hover:text-red-500 transition"
+                  title="Áp dụng font custom"
+                >
+                  <i class="fa-solid fa-check"></i>
+                </button>
+              </form>
+
+              <div class="flex items-center gap-2 text-xs ml-2 text-gray-400">
+                <i class="fa-solid fa-text-height"></i>
+                <input
+                  type="range"
+                  min="12"
+                  max="150"
+                  value="24"
+                  oninput="
+                    updateStyle('text-2-input', 'fontSize', this.value + 'px')
+                  "
+                />
+              </div>
+              <div class="flex items-center gap-2 text-xs text-gray-400">
+                <i class="fa-solid fa-bold"></i>
+                <input
+                  type="range"
+                  min="100"
+                  max="900"
+                  step="100"
+                  value="400"
+                  oninput="
+                    updateStyle('text-2-input', 'fontWeight', this.value)
+                  "
+                />
+              </div>
+
+              <span class="custom-font-status text-[10px] text-gray-500 w-full text-center"></span>
+            </div>
+
+            <div
+              id="text-2-input"
+              contenteditable="true"
+              data-locked="false"
+              class="w-full text-center text-gray-400 outline-none transition-all bg-transparent"
+              style="font-size: 24px; font-weight: 400; line-height: 1.5"
+            >
+              Dark mode with red accents. Minimal, clean, and ready to export.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
