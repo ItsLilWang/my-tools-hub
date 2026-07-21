@@ -312,8 +312,7 @@ function changeRatio(ratio, btnElement) {
   btnElement.classList.add("neu-active", "text-red-500");
 }
 
-// Tính kích thước canvas kiểu "contain-fit": vừa khít cả bề ngang lẫn bề dọc
-// màn hình, tránh tràn ngang trên mobile khi đổi tỉ lệ 1:1 / 3:4.
+// Tính kích thước canvas kiểu "contain-fit": ưu tiên cố định chiều cao
 function fitCanvasToContainer() {
   const canvas = document.getElementById("preview-canvas");
   if (!canvas) return;
@@ -324,12 +323,14 @@ function fitCanvasToContainer() {
   const availableWidth = wrapper.clientWidth;
   const availableHeight = window.innerHeight * 0.62;
 
-  let width = availableWidth;
-  let height = width * (rh / rw);
+  // Lấy chiều cao display làm chuẩn cố định
+  let height = availableHeight;
+  let width = height * (rw / rh);
 
-  if (height > availableHeight) {
-    height = availableHeight;
-    width = height * (rw / rh);
+  // Chỉ scale lại nếu chiều ngang bị tràn khung (dành cho mobile)
+  if (width > availableWidth) {
+    width = availableWidth;
+    height = width * (rh / rw);
   }
 
   canvas.style.width = Math.floor(width) + "px";

@@ -12,7 +12,7 @@
     <style>
       /* Base Dark Neumorphism */
       body {
-        background-color: #18181b; /* Nền tối (zinc-900) */
+        background-color: #18181b;
         color: #e4e4e7;
       }
 
@@ -45,7 +45,7 @@
         border: 1px solid transparent;
       }
       .neu-btn:hover {
-        color: #ef4444; /* Accent Red */
+        color: #ef4444;
       }
       .neu-btn:active,
       .neu-active {
@@ -73,7 +73,7 @@
         width: 14px;
         height: 14px;
         border-radius: 50%;
-        background: #ef4444; /* Accent Red */
+        background: #ef4444;
         box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
         cursor: pointer;
         transition: 0.2s;
@@ -196,7 +196,25 @@
 
           <div class="w-px h-6 bg-zinc-800 hidden sm:block"></div>
 
+          <!-- Nhóm công cụ -->
           <div class="flex flex-wrap gap-2 sm:gap-4">
+            <!-- Nút gọi Toolbar Text 1 & 2 -->
+            <button
+              onclick="togglePanel('toolbar-text-1')"
+              class="neu-btn px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold text-gray-400 flex items-center gap-2"
+            >
+              <i class="fa-solid fa-heading"></i> T1
+            </button>
+            <button
+              onclick="togglePanel('toolbar-text-2')"
+              class="neu-btn px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold text-gray-400 flex items-center gap-2"
+            >
+              <i class="fa-solid fa-align-left"></i> T2
+            </button>
+
+            <div class="w-px h-6 bg-zinc-800 hidden sm:block"></div>
+
+            <!-- Các nút chức năng cũ -->
             <button
               onclick="swapFonts()"
               class="neu-btn px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-gray-400 flex items-center gap-2"
@@ -226,187 +244,161 @@
         </div>
       </div>
 
-      <div class="flex justify-center w-full">
-        <!-- Canvas chìm: kích thước được JS tính lại (contain-fit) cho từng tỉ lệ -->
+      <!-- KHU VỰC TOOLBARS (Nằm cố định bên ngoài) -->
+      <div class="w-full flex flex-col gap-2">
+        <div
+          id="toolbar-text-1"
+          class="text-toolbar hidden w-full px-2 sm:px-3 py-1.5 sm:py-2 neu-flat text-xs"
+        >
+          <span class="text-red-500 font-bold uppercase"
+            ><i class="fa-solid fa-heading"></i> T1</span
+          >
+          <div class="h-4 w-px bg-zinc-700"></div>
+
+          <button
+            onclick="toggleLock(this, 'text-1-input')"
+            class="text-gray-500 hover:text-red-500 transition"
+            title="Khóa"
+          >
+            <i class="fa-solid fa-lock-open"></i>
+          </button>
+
+          <select
+            class="font-picker outline-none cursor-pointer p-1"
+            data-target="text-1-input"
+          ></select>
+
+          <form class="custom-font-form flex items-center gap-1">
+            <input
+              type="text"
+              placeholder="Font khác..."
+              class="custom-font-input neu-pressed text-[11px] px-2 py-1 outline-none"
+              data-target="text-1-input"
+            />
+            <button
+              type="submit"
+              class="text-gray-500 hover:text-red-500 transition"
+              title="Áp dụng font custom"
+            >
+              <i class="fa-solid fa-check"></i>
+            </button>
+            <span class="custom-font-status text-[10px] text-gray-500"></span>
+          </form>
+
+          <div class="flex items-center gap-1.5 text-gray-400 ml-1">
+            <i class="fa-solid fa-text-height"></i>
+            <input
+              type="range"
+              min="16"
+              max="150"
+              value="70"
+              oninput="
+                updateStyle('text-1-input', 'fontSize', this.value + 'px')
+              "
+            />
+          </div>
+          <div class="flex items-center gap-1.5 text-gray-400">
+            <i class="fa-solid fa-bold"></i>
+            <input
+              type="range"
+              min="100"
+              max="900"
+              step="100"
+              value="800"
+              oninput="updateStyle('text-1-input', 'fontWeight', this.value)"
+            />
+          </div>
+        </div>
+
+        <div
+          id="toolbar-text-2"
+          class="text-toolbar hidden w-full px-2 sm:px-3 py-1.5 sm:py-2 neu-flat text-xs"
+        >
+          <span class="text-red-500 font-bold uppercase"
+            ><i class="fa-solid fa-align-left"></i> T2</span
+          >
+          <div class="h-4 w-px bg-zinc-700"></div>
+
+          <button
+            onclick="toggleLock(this, 'text-2-input')"
+            class="text-gray-500 hover:text-red-500 transition"
+            title="Khóa"
+          >
+            <i class="fa-solid fa-lock-open"></i>
+          </button>
+
+          <select
+            class="font-picker outline-none cursor-pointer p-1"
+            data-target="text-2-input"
+          ></select>
+
+          <form class="custom-font-form flex items-center gap-1">
+            <input
+              type="text"
+              placeholder="Font khác..."
+              class="custom-font-input neu-pressed text-[11px] px-2 py-1 outline-none"
+              data-target="text-2-input"
+            />
+            <button
+              type="submit"
+              class="text-gray-500 hover:text-red-500 transition"
+              title="Áp dụng font custom"
+            >
+              <i class="fa-solid fa-check"></i>
+            </button>
+            <span class="custom-font-status text-[10px] text-gray-500"></span>
+          </form>
+
+          <div class="flex items-center gap-1.5 text-gray-400 ml-1">
+            <i class="fa-solid fa-text-height"></i>
+            <input
+              type="range"
+              min="12"
+              max="150"
+              value="24"
+              oninput="
+                updateStyle('text-2-input', 'fontSize', this.value + 'px')
+              "
+            />
+          </div>
+          <div class="flex items-center gap-1.5 text-gray-400">
+            <i class="fa-solid fa-bold"></i>
+            <input
+              type="range"
+              min="100"
+              max="900"
+              step="100"
+              value="400"
+              oninput="updateStyle('text-2-input', 'fontWeight', this.value)"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- KHU VỰC CANVAS (Giờ chỉ chứa mỗi Text) -->
+      <div class="flex justify-center w-full mt-2">
         <div
           id="preview-canvas"
           class="neu-pressed flex flex-col justify-center items-center gap-4 sm:gap-6 p-4 sm:p-10 transition-all duration-300 ease-in-out relative overflow-y-auto overflow-x-hidden"
         >
-          <!-- TEXT 1 -->
-          <div class="w-full flex flex-col items-center gap-2 sm:gap-3">
-            <button
-              onclick="togglePanel('toolbar-text-1')"
-              class="neu-btn w-7 h-7 flex items-center justify-center text-gray-500 text-xs shrink-0"
-              title="Tùy chỉnh Text 1"
-            >
-              <i class="fa-solid fa-sliders"></i>
-            </button>
-            <!-- Toolbar 1 hàng, tự cuộn ngang, ghim trên cùng khi scroll, ẩn mặc định -->
-            <div
-              id="toolbar-text-1"
-              class="text-toolbar hidden sticky top-0 z-10 w-full max-w-full px-2 sm:px-3 py-1.5 sm:py-2 neu-flat text-xs"
-            >
-              <span class="text-red-500 font-bold uppercase"
-                ><i class="fa-solid fa-heading"></i> T1</span
-              >
-              <div class="h-4 w-px bg-zinc-700"></div>
-
-              <button
-                onclick="toggleLock(this, 'text-1-input')"
-                class="text-gray-500 hover:text-red-500 transition"
-                title="Khóa"
-              >
-                <i class="fa-solid fa-lock-open"></i>
-              </button>
-
-              <select
-                class="font-picker outline-none cursor-pointer p-1"
-                data-target="text-1-input"
-              ></select>
-
-              <form class="custom-font-form flex items-center gap-1">
-                <input
-                  type="text"
-                  placeholder="Font khác..."
-                  class="custom-font-input neu-pressed text-[11px] px-2 py-1 outline-none"
-                  data-target="text-1-input"
-                />
-                <button
-                  type="submit"
-                  class="text-gray-500 hover:text-red-500 transition"
-                  title="Áp dụng font custom"
-                >
-                  <i class="fa-solid fa-check"></i>
-                </button>
-                <span
-                  class="custom-font-status text-[10px] text-gray-500"
-                ></span>
-              </form>
-
-              <div class="flex items-center gap-1.5 text-gray-400 ml-1">
-                <i class="fa-solid fa-text-height"></i>
-                <input
-                  type="range"
-                  min="16"
-                  max="150"
-                  value="70"
-                  oninput="
-                    updateStyle('text-1-input', 'fontSize', this.value + 'px')
-                  "
-                />
-              </div>
-              <div class="flex items-center gap-1.5 text-gray-400">
-                <i class="fa-solid fa-bold"></i>
-                <input
-                  type="range"
-                  min="100"
-                  max="900"
-                  step="100"
-                  value="800"
-                  oninput="
-                    updateStyle('text-1-input', 'fontWeight', this.value)
-                  "
-                />
-              </div>
-            </div>
-
-            <div
-              id="text-1-input"
-              contenteditable="true"
-              data-locked="false"
-              class="w-full text-center text-white outline-none transition-all bg-transparent"
-              style="font-size: 70px; font-weight: 800; line-height: 1.1"
-            >
-              NEUMORPHISM.
-            </div>
+          <div
+            id="text-1-input"
+            contenteditable="true"
+            data-locked="false"
+            class="w-full text-center text-white outline-none transition-all bg-transparent"
+            style="font-size: 70px; font-weight: 800; line-height: 1.1"
+          >
+            NEUMORPHISM.
           </div>
 
-          <!-- TEXT 2 -->
-          <div class="w-full flex flex-col items-center gap-2 sm:gap-3">
-            <button
-              onclick="togglePanel('toolbar-text-2')"
-              class="neu-btn w-7 h-7 flex items-center justify-center text-gray-500 text-xs shrink-0"
-              title="Tùy chỉnh Text 2"
-            >
-              <i class="fa-solid fa-sliders"></i>
-            </button>
-            <div
-              id="toolbar-text-2"
-              class="text-toolbar hidden sticky top-0 z-10 w-full max-w-full px-2 sm:px-3 py-1.5 sm:py-2 neu-flat text-xs"
-            >
-              <span class="text-red-500 font-bold uppercase"
-                ><i class="fa-solid fa-align-left"></i> T2</span
-              >
-              <div class="h-4 w-px bg-zinc-700"></div>
-
-              <button
-                onclick="toggleLock(this, 'text-2-input')"
-                class="text-gray-500 hover:text-red-500 transition"
-                title="Khóa"
-              >
-                <i class="fa-solid fa-lock-open"></i>
-              </button>
-
-              <select
-                class="font-picker outline-none cursor-pointer p-1"
-                data-target="text-2-input"
-              ></select>
-
-              <form class="custom-font-form flex items-center gap-1">
-                <input
-                  type="text"
-                  placeholder="Font khác..."
-                  class="custom-font-input neu-pressed text-[11px] px-2 py-1 outline-none"
-                  data-target="text-2-input"
-                />
-                <button
-                  type="submit"
-                  class="text-gray-500 hover:text-red-500 transition"
-                  title="Áp dụng font custom"
-                >
-                  <i class="fa-solid fa-check"></i>
-                </button>
-                <span
-                  class="custom-font-status text-[10px] text-gray-500"
-                ></span>
-              </form>
-
-              <div class="flex items-center gap-1.5 text-gray-400 ml-1">
-                <i class="fa-solid fa-text-height"></i>
-                <input
-                  type="range"
-                  min="12"
-                  max="150"
-                  value="24"
-                  oninput="
-                    updateStyle('text-2-input', 'fontSize', this.value + 'px')
-                  "
-                />
-              </div>
-              <div class="flex items-center gap-1.5 text-gray-400">
-                <i class="fa-solid fa-bold"></i>
-                <input
-                  type="range"
-                  min="100"
-                  max="900"
-                  step="100"
-                  value="400"
-                  oninput="
-                    updateStyle('text-2-input', 'fontWeight', this.value)
-                  "
-                />
-              </div>
-            </div>
-
-            <div
-              id="text-2-input"
-              contenteditable="true"
-              data-locked="false"
-              class="w-full text-center text-gray-400 outline-none transition-all bg-transparent"
-              style="font-size: 24px; font-weight: 400; line-height: 1.5"
-            >
-              Dark mode with red accents. Minimal, clean, and ready to export.
-            </div>
+          <div
+            id="text-2-input"
+            contenteditable="true"
+            data-locked="false"
+            class="w-full text-center text-gray-400 outline-none transition-all bg-transparent"
+            style="font-size: 24px; font-weight: 400; line-height: 1.5"
+          >
+            Dark mode with red accents. Minimal, clean, and ready to export.
           </div>
         </div>
       </div>
