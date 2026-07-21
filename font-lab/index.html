@@ -58,7 +58,7 @@
       /* Tùy chỉnh thanh trượt (slider) phong cách chìm */
       input[type="range"] {
         -webkit-appearance: none;
-        width: 70px;
+        width: 60px;
         height: 6px;
         background: #18181b;
         box-shadow:
@@ -66,6 +66,7 @@
           inset -2px -2px 5px #26262b;
         border-radius: 4px;
         outline: none;
+        flex-shrink: 0;
       }
       input[type="range"]::-webkit-slider-thumb {
         -webkit-appearance: none;
@@ -87,7 +88,8 @@
         background-color: transparent;
         color: #ef4444;
         font-weight: bold;
-        max-width: 140px;
+        max-width: 110px;
+        flex-shrink: 0;
       }
       select option,
       select optgroup {
@@ -102,12 +104,32 @@
       .custom-font-input {
         background: #18181b;
         color: #e4e4e7;
+        width: 80px;
+        flex-shrink: 0;
       }
       .custom-font-input::placeholder {
         color: #52525b;
       }
 
-      /* Thanh cuộn đỏ */
+      /* Thanh toolbar 1 hàng, tự cuộn ngang khi hết chỗ, không bao giờ xuống hàng */
+      .text-toolbar {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 0.5rem;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: thin;
+        -webkit-overflow-scrolling: touch;
+      }
+      .text-toolbar > * {
+        flex-shrink: 0;
+      }
+      .text-toolbar::-webkit-scrollbar {
+        height: 4px;
+      }
+
+      /* Thanh cuộn đỏ (global) */
       ::-webkit-scrollbar {
         width: 6px;
       }
@@ -121,11 +143,13 @@
     </style>
   </head>
   <body
-    class="min-h-screen flex items-center justify-center p-6 font-sans antialiased"
+    class="min-h-screen flex items-center justify-center p-3 sm:p-6 font-sans antialiased"
   >
-    <div class="neu-flat w-full max-w-5xl p-8 flex flex-col gap-8">
+    <div
+      class="neu-flat w-full max-w-5xl p-4 sm:p-8 flex flex-col gap-4 sm:gap-8"
+    >
       <!-- Header & Controls -->
-      <div class="flex flex-wrap justify-between items-center gap-6 pb-2">
+      <div class="flex flex-wrap justify-between items-center gap-4 sm:gap-6 pb-2">
         <!-- Nút Back & Logo -->
         <div class="flex items-center gap-4">
           <a
@@ -136,63 +160,63 @@
             <i class="fa-solid fa-arrow-left"></i>
           </a>
           <h1
-            class="text-2xl font-extrabold tracking-widest text-red-500 uppercase flex items-center gap-2"
+            class="text-xl sm:text-2xl font-extrabold tracking-widest text-red-500 uppercase flex items-center gap-2"
           >
             <i class="fa-solid fa-layer-group"></i> FontLab
           </h1>
         </div>
 
-        <div class="flex flex-wrap items-center gap-6">
+        <div class="flex flex-wrap items-center gap-4 sm:gap-6">
           <!-- Ratio Buttons -->
-          <div class="flex gap-3">
+          <div class="flex gap-2 sm:gap-3">
             <button
               onclick="changeRatio('1/1', this)"
               data-ratio="1/1"
-              class="ratio-btn neu-btn px-4 py-2 text-xs font-bold text-gray-500"
+              class="ratio-btn neu-btn px-3 sm:px-4 py-2 text-xs font-bold text-gray-500"
             >
               1:1
             </button>
             <button
               onclick="changeRatio('3/4', this)"
               data-ratio="3/4"
-              class="ratio-btn neu-btn px-4 py-2 text-xs font-bold text-gray-500"
+              class="ratio-btn neu-btn px-3 sm:px-4 py-2 text-xs font-bold text-gray-500"
             >
               3:4
             </button>
             <button
               onclick="changeRatio('16/9', this)"
               data-ratio="16/9"
-              class="ratio-btn neu-btn px-4 py-2 text-xs font-bold neu-active text-red-500"
+              class="ratio-btn neu-btn px-3 sm:px-4 py-2 text-xs font-bold neu-active text-red-500"
             >
               16:9
             </button>
           </div>
 
-          <div class="w-px h-6 bg-zinc-800"></div>
+          <div class="w-px h-6 bg-zinc-800 hidden sm:block"></div>
 
-          <div class="flex flex-wrap gap-4">
+          <div class="flex flex-wrap gap-2 sm:gap-4">
             <button
               onclick="swapFonts()"
-              class="neu-btn px-4 py-2 text-sm font-semibold text-gray-400 flex items-center gap-2"
+              class="neu-btn px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-gray-400 flex items-center gap-2"
             >
               <i class="fa-solid fa-arrow-right-arrow-left"></i> Swap
             </button>
             <button
               onclick="randomFonts()"
-              class="neu-btn px-4 py-2 text-sm font-semibold text-gray-400 flex items-center gap-2"
+              class="neu-btn px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-gray-400 flex items-center gap-2"
             >
               <i class="fa-solid fa-dice"></i> Random
             </button>
             <button
               onclick="resetAll()"
-              class="neu-btn px-4 py-2 text-sm font-semibold text-gray-400 flex items-center gap-2"
+              class="neu-btn px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-gray-400 flex items-center gap-2"
               title="Về mặc định"
             >
               <i class="fa-solid fa-rotate-left"></i> Reset
             </button>
             <button
               onclick="downloadInfo()"
-              class="neu-btn px-4 py-2 text-sm font-semibold text-red-500 flex items-center gap-2"
+              class="neu-btn px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-red-500 flex items-center gap-2"
             >
               <i class="fa-solid fa-download"></i> DL
             </button>
@@ -201,29 +225,18 @@
       </div>
 
       <div class="flex justify-center w-full">
-        <!-- Canvas chìm -->
+        <!-- Canvas chìm: kích thước được JS tính lại (contain-fit) cho từng tỉ lệ -->
         <div
           id="preview-canvas"
-          class="neu-pressed h-[65vh] max-w-full flex flex-col justify-center items-center p-12 gap-8 transition-all duration-500 ease-in-out relative overflow-hidden"
-          style="aspect-ratio: 16/9"
+          class="neu-pressed flex flex-col justify-center items-center gap-4 sm:gap-6 p-4 sm:p-10 transition-all duration-300 ease-in-out relative overflow-y-auto overflow-x-hidden"
         >
           <!-- TEXT 1 -->
-          <div class="w-full flex flex-col items-center gap-3">
-            <!-- Toggle luôn hiện, bấm được cả mobile lẫn desktop -->
-            <button
-              onclick="togglePanel('panel-text-1')"
-              class="neu-btn w-8 h-8 flex items-center justify-center text-gray-500 text-xs shrink-0"
-              title="Tùy chỉnh Text 1"
-            >
-              <i class="fa-solid fa-sliders"></i>
-            </button>
-
-            <!-- Panel điều khiển, ẩn mặc định -->
+          <div class="w-full flex flex-col items-center gap-2 sm:gap-3">
+            <!-- Toolbar luôn hiện, 1 hàng, tự cuộn ngang, ghim trên cùng khi scroll -->
             <div
-              id="panel-text-1"
-              class="hidden flex-wrap items-center justify-center gap-3 px-4 py-3 neu-flat w-fit max-w-full"
+              class="text-toolbar sticky top-0 z-10 w-full max-w-full px-2 sm:px-3 py-1.5 sm:py-2 neu-flat text-xs"
             >
-              <span class="text-xs text-red-500 font-bold uppercase"
+              <span class="text-red-500 font-bold uppercase"
                 ><i class="fa-solid fa-heading"></i> T1</span
               >
               <div class="h-4 w-px bg-zinc-700"></div>
@@ -237,7 +250,7 @@
               </button>
 
               <select
-                class="font-picker outline-none cursor-pointer p-1 text-sm"
+                class="font-picker outline-none cursor-pointer p-1"
                 data-target="text-1-input"
               ></select>
 
@@ -245,7 +258,7 @@
                 <input
                   type="text"
                   placeholder="Font khác..."
-                  class="custom-font-input neu-pressed text-xs px-2 py-1 outline-none w-24"
+                  class="custom-font-input neu-pressed text-[11px] px-2 py-1 outline-none"
                   data-target="text-1-input"
                 />
                 <button
@@ -258,7 +271,7 @@
                 <span class="custom-font-status text-[10px] text-gray-500"></span>
               </form>
 
-              <div class="flex items-center gap-2 text-xs ml-2 text-gray-400">
+              <div class="flex items-center gap-1.5 text-gray-400 ml-1">
                 <i class="fa-solid fa-text-height"></i>
                 <input
                   type="range"
@@ -270,7 +283,7 @@
                   "
                 />
               </div>
-              <div class="flex items-center gap-2 text-xs text-gray-400">
+              <div class="flex items-center gap-1.5 text-gray-400">
                 <i class="fa-solid fa-bold"></i>
                 <input
                   type="range"
@@ -297,20 +310,11 @@
           </div>
 
           <!-- TEXT 2 -->
-          <div class="w-full flex flex-col items-center gap-3">
-            <button
-              onclick="togglePanel('panel-text-2')"
-              class="neu-btn w-8 h-8 flex items-center justify-center text-gray-500 text-xs shrink-0"
-              title="Tùy chỉnh Text 2"
-            >
-              <i class="fa-solid fa-sliders"></i>
-            </button>
-
+          <div class="w-full flex flex-col items-center gap-2 sm:gap-3">
             <div
-              id="panel-text-2"
-              class="hidden flex-wrap items-center justify-center gap-3 px-4 py-3 neu-flat w-fit max-w-full"
+              class="text-toolbar sticky top-0 z-10 w-full max-w-full px-2 sm:px-3 py-1.5 sm:py-2 neu-flat text-xs"
             >
-              <span class="text-xs text-red-500 font-bold uppercase"
+              <span class="text-red-500 font-bold uppercase"
                 ><i class="fa-solid fa-align-left"></i> T2</span
               >
               <div class="h-4 w-px bg-zinc-700"></div>
@@ -324,7 +328,7 @@
               </button>
 
               <select
-                class="font-picker outline-none cursor-pointer p-1 text-sm"
+                class="font-picker outline-none cursor-pointer p-1"
                 data-target="text-2-input"
               ></select>
 
@@ -332,7 +336,7 @@
                 <input
                   type="text"
                   placeholder="Font khác..."
-                  class="custom-font-input neu-pressed text-xs px-2 py-1 outline-none w-24"
+                  class="custom-font-input neu-pressed text-[11px] px-2 py-1 outline-none"
                   data-target="text-2-input"
                 />
                 <button
@@ -345,7 +349,7 @@
                 <span class="custom-font-status text-[10px] text-gray-500"></span>
               </form>
 
-              <div class="flex items-center gap-2 text-xs ml-2 text-gray-400">
+              <div class="flex items-center gap-1.5 text-gray-400 ml-1">
                 <i class="fa-solid fa-text-height"></i>
                 <input
                   type="range"
@@ -357,7 +361,7 @@
                   "
                 />
               </div>
-              <div class="flex items-center gap-2 text-xs text-gray-400">
+              <div class="flex items-center gap-1.5 text-gray-400">
                 <i class="fa-solid fa-bold"></i>
                 <input
                   type="range"

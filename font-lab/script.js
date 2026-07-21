@@ -102,6 +102,14 @@ const fontList = {
   ],
 };
 
+// Tỉ lệ khung preview: [width_units, height_units]
+const RATIOS = {
+  "1/1": [1, 1],
+  "3/4": [3, 4],
+  "16/9": [16, 9],
+};
+let currentRatio = "16/9";
+
 const categoryLabels = {
   sansModern: "Sans / Modern",
   displayHeading: "Display / Heading",
@@ -282,7 +290,10 @@ async function handleCustomFontSubmit(form) {
   }
 }
 
-window.onload = initFonts;
+window.onload = () => {
+  initFonts();
+  fitCanvasToContainer();
+};
 
 function updateStyle(elementId, property, value) {
   const el = document.getElementById(elementId);
@@ -290,8 +301,8 @@ function updateStyle(elementId, property, value) {
 }
 
 function changeRatio(ratio, btnElement) {
-  const canvas = document.getElementById("preview-canvas");
-  if (canvas) canvas.style.aspectRatio = ratio;
+  currentRatio = ratio;
+  fitCanvasToContainer();
 
   document.querySelectorAll(".ratio-btn").forEach((btn) => {
     btn.classList.remove("neu-active", "text-red-500");
@@ -302,11 +313,40 @@ function changeRatio(ratio, btnElement) {
   btnElement.classList.add("neu-active", "text-red-500");
 }
 
-function togglePanel(panelId) {
-  const panel = document.getElementById(panelId);
-  if (!panel) return;
-  panel.classList.toggle("hidden");
+// Tính kích thước canvas kiểu "contain-fit": vừa khít cả bề ngang lẫn bề dọc
+// màn hình, tránh tràn ngang trên mobile khi đổi tỉ lệ 1:1 / 3:4.
+function fitCanvasToContainer() {
+  const canvas = document.getElementById("preview-canvas");
+  if (!canvas) return;
+  const wrapper = canvas.parentElement;
+  if (!wrapper) return;
+
+  const [rw, rh] = RATIOS[currentRatio] || RATIOS["16/9"];
+  const availableWidth = wrapper.clientWidth;
+  const availableHeight = window.innerHeight * 0.62;
+
+  let width = availableWidth;
+  let height = width * (rh / rw);
+
+  if (height > availableHeight) {
+    height = availableHeight;
+    width = height * (rw / rh);
+  }
+
+  canvas.style.width = Math.floor(width) + "px";
+  canvas.style.height = Math.floor(height) + "px";
 }
+
+// Debounce nhẹ cho resize/orientation change
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(fitCanvasToContainer, 120);
+});
+window.addEventListener("orientationchange", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(fitCanvasToContainer, 120);
+});
 
 function toggleLock(btn, targetId) {
   const icon = btn.querySelector("i");
@@ -395,8 +435,8 @@ function resetAll() {
   });
 
   // Reset ratio về 16:9
-  const canvas = document.getElementById("preview-canvas");
-  if (canvas) canvas.style.aspectRatio = "16/9";
+  currentRatio = "16/9";
+  fitCanvasToContainer();
   document.querySelectorAll(".ratio-btn").forEach((btn) => {
     btn.classList.remove("neu-active", "text-red-500");
     btn.classList.add("text-gray-500");
