@@ -149,7 +149,9 @@
       class="neu-flat w-full max-w-5xl p-4 sm:p-8 flex flex-col gap-4 sm:gap-8"
     >
       <!-- Header & Controls -->
-      <div class="flex flex-wrap justify-between items-center gap-4 sm:gap-6 pb-2">
+      <div
+        class="flex flex-wrap justify-between items-center gap-4 sm:gap-6 pb-2"
+      >
         <!-- Nút Back & Logo -->
         <div class="flex items-center gap-4">
           <a
@@ -232,9 +234,17 @@
         >
           <!-- TEXT 1 -->
           <div class="w-full flex flex-col items-center gap-2 sm:gap-3">
-            <!-- Toolbar luôn hiện, 1 hàng, tự cuộn ngang, ghim trên cùng khi scroll -->
+            <button
+              onclick="togglePanel('toolbar-text-1')"
+              class="neu-btn w-7 h-7 flex items-center justify-center text-gray-500 text-xs shrink-0"
+              title="Tùy chỉnh Text 1"
+            >
+              <i class="fa-solid fa-sliders"></i>
+            </button>
+            <!-- Toolbar 1 hàng, tự cuộn ngang, ghim trên cùng khi scroll, ẩn mặc định -->
             <div
-              class="text-toolbar sticky top-0 z-10 w-full max-w-full px-2 sm:px-3 py-1.5 sm:py-2 neu-flat text-xs"
+              id="toolbar-text-1"
+              class="text-toolbar hidden sticky top-0 z-10 w-full max-w-full px-2 sm:px-3 py-1.5 sm:py-2 neu-flat text-xs"
             >
               <span class="text-red-500 font-bold uppercase"
                 ><i class="fa-solid fa-heading"></i> T1</span
@@ -268,7 +278,9 @@
                 >
                   <i class="fa-solid fa-check"></i>
                 </button>
-                <span class="custom-font-status text-[10px] text-gray-500"></span>
+                <span
+                  class="custom-font-status text-[10px] text-gray-500"
+                ></span>
               </form>
 
               <div class="flex items-center gap-1.5 text-gray-400 ml-1">
@@ -311,8 +323,16 @@
 
           <!-- TEXT 2 -->
           <div class="w-full flex flex-col items-center gap-2 sm:gap-3">
+            <button
+              onclick="togglePanel('toolbar-text-2')"
+              class="neu-btn w-7 h-7 flex items-center justify-center text-gray-500 text-xs shrink-0"
+              title="Tùy chỉnh Text 2"
+            >
+              <i class="fa-solid fa-sliders"></i>
+            </button>
             <div
-              class="text-toolbar sticky top-0 z-10 w-full max-w-full px-2 sm:px-3 py-1.5 sm:py-2 neu-flat text-xs"
+              id="toolbar-text-2"
+              class="text-toolbar hidden sticky top-0 z-10 w-full max-w-full px-2 sm:px-3 py-1.5 sm:py-2 neu-flat text-xs"
             >
               <span class="text-red-500 font-bold uppercase"
                 ><i class="fa-solid fa-align-left"></i> T2</span
@@ -346,7 +366,9 @@
                 >
                   <i class="fa-solid fa-check"></i>
                 </button>
-                <span class="custom-font-status text-[10px] text-gray-500"></span>
+                <span
+                  class="custom-font-status text-[10px] text-gray-500"
+                ></span>
               </form>
 
               <div class="flex items-center gap-1.5 text-gray-400 ml-1">

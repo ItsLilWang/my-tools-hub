@@ -285,8 +285,7 @@ async function handleCustomFontSubmit(form) {
     input.value = "";
   } else {
     statusEl.textContent = "✗ Không tìm thấy font này trên Google Fonts";
-    statusEl.className =
-      "custom-font-status text-[10px] text-orange-400 ml-1";
+    statusEl.className = "custom-font-status text-[10px] text-orange-400 ml-1";
   }
 }
 
@@ -347,6 +346,15 @@ window.addEventListener("orientationchange", () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(fitCanvasToContainer, 120);
 });
+
+function togglePanel(panelId) {
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+  const isHidden =
+    panel.classList.contains("hidden") || panel.style.display === "none";
+  panel.classList.remove("hidden");
+  panel.style.display = isHidden ? "flex" : "none";
+}
 
 function toggleLock(btn, targetId) {
   const icon = btn.querySelector("i");
