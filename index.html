@@ -4,58 +4,36 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My Tools Hub</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>"
+    />
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
-    <style>
-      body {
-        background-color: #18181b;
-        color: #e4e4e7;
-      }
-      .neu-flat {
-        background: #18181b;
-        box-shadow:
-          8px 8px 16px #0a0a0b,
-          -8px -8px 16px #26262b;
-        border-radius: 1.5rem;
-      }
-      .neu-btn {
-        background: #18181b;
-        box-shadow:
-          4px 4px 10px #0a0a0b,
-          -4px -4px 10px #26262b;
-        border-radius: 0.75rem;
-        transition: all 0.2s ease-in-out;
-      }
-      .neu-btn:hover {
-        color: #ef4444;
-      }
-      .neu-btn:active {
-        box-shadow:
-          inset 4px 4px 8px #0a0a0b,
-          inset -4px -4px 8px #26262b;
-      }
-    </style>
+    <!-- Link CSS global -->
+    <link rel="stylesheet" href="./assets/css/neumorphism.css" />
   </head>
   <body class="min-h-screen flex flex-col items-center p-10 font-sans">
-    <!-- Tiêu đề trang Hub -->
+    <!-- Hub Header -->
     <div class="mb-12 text-center">
       <h1 class="text-4xl font-extrabold text-white tracking-widest uppercase">
         My <span class="text-red-500">Workspace</span>
       </h1>
-      <p class="text-gray-500 mt-2">Tổng hợp các tool t tự chế (Code by Me)</p>
+      <p class="text-gray-500 mt-2">
+        A collection of custom utility tools (Code by Me)
+      </p>
     </div>
 
-    <!-- Danh sách Tool -->
+    <!-- Tools Grid -->
     <div
       class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-5xl"
     >
       <!-- Card: FontLab Tool -->
       <a
-        href="./font-lab/index.html"
+        href="./tools/font-lab/index.html"
         class="neu-flat p-6 flex flex-col gap-4 group cursor-pointer hover:-translate-y-2 transition-transform duration-300"
       >
         <div
@@ -67,11 +45,11 @@
           FontLab
         </h2>
         <p class="text-gray-400 text-sm">
-          Công cụ test font thần tốc cho Designer, hỗ trợ Neumorphism UI.
+          Lightning-fast font tester for Designers, supporting Neumorphism UI.
         </p>
       </a>
 
-      <!-- Card: (Chỗ để dành mốt làm tool số 2) -->
+      <!-- Card: Coming Soon -->
       <div
         class="neu-flat p-6 flex flex-col gap-4 opacity-50 cursor-not-allowed"
       >
@@ -81,11 +59,9 @@
           <i class="fa-solid fa-code"></i>
         </div>
         <h2 class="text-xl font-bold text-gray-500 uppercase tracking-wider">
-          Sắp ra mắt
+          Coming Soon
         </h2>
-        <p class="text-gray-600 text-sm">
-          Đang ấp ủ ý tưởng mới, chờ xíu nha...
-        </p>
+        <p class="text-gray-600 text-sm">Brewing new ideas, stay tuned...</p>
       </div>
     </div>
   </body>

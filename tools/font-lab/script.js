@@ -102,7 +102,7 @@ const fontList = {
   ],
 };
 
-// Tỉ lệ khung preview: [width_units, height_units]
+// Preview frame ratios: [width_units, height_units]
 const RATIOS = {
   "1/1": [1, 1],
   "3/4": [3, 4],
@@ -119,12 +119,12 @@ const categoryLabels = {
   vietnameseFriendly: "Vietnamese-friendly",
 };
 
-// Mảng font đầy đủ, có filter trùng (như Inter, Prompt xuất hiện ở nhiều nhóm)
+// Full font array, with duplicates filtered
 let allUniqueFonts = [...new Set(Object.values(fontList).flat())];
 
-// Cache font đã load để không gọi lại Google Fonts nhiều lần
+// Cache loaded fonts to prevent multiple Google Fonts requests
 const loadedFonts = new Set();
-// Font custom user tự nhập (để random/lưu lại option)
+// Custom fonts entered by user
 const customFonts = new Set();
 
 const DEFAULTS = {
@@ -134,13 +134,10 @@ const DEFAULTS = {
 
 function buildFontUrl(fontName) {
   const urlName = fontName.trim().replace(/\s+/g, "+");
-  // Xin đủ các weight phổ biến. Google Fonts sẽ tự bỏ qua weight nào font không hỗ trợ,
-  // nên font nào có sẵn weight gì thì mình có đúng weight đó (không bị giả bold/thin nữa).
   return `https://fonts.googleapis.com/css2?family=${urlName}:wght@100;200;300;400;500;600;700;800;900&display=swap`;
 }
 
-// Tải 1 font cụ thể từ Google Fonts, verify là font có tồn tại thật không.
-// Trả về true/false.
+// Load a specific font from Google Fonts, verify if it exists.
 async function ensureFontLoaded(fontName) {
   const key = fontName.trim();
   if (!key) return false;
@@ -149,9 +146,8 @@ async function ensureFontLoaded(fontName) {
   const url = buildFontUrl(key);
   try {
     const res = await fetch(url, { mode: "cors" });
-    if (!res.ok) return false; // Google trả lỗi -> font không tồn tại
+    if (!res.ok) return false;
     const css = await res.text();
-    // Google Fonts khi không tìm thấy family vẫn trả 200 nhưng css rỗng/không có @font-face
     if (!css.includes("@font-face") && !css.includes("font-family")) {
       return false;
     }
@@ -182,7 +178,6 @@ function initFonts() {
     });
   });
 
-  // Set giá trị + load font mặc định (lazy, chỉ 2 font ban đầu)
   Object.entries(DEFAULTS).forEach(async ([targetId, cfg]) => {
     const select = document.querySelector(
       `.font-picker[data-target="${targetId}"]`,
@@ -193,7 +188,6 @@ function initFonts() {
     if (el) el.style.fontFamily = `"${cfg.font}", sans-serif`;
   });
 
-  // Custom font inputs
   document.querySelectorAll(".custom-font-form").forEach((form) => {
     form.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -220,7 +214,6 @@ function populateSelectOptions(select) {
   select.appendChild(fragment);
 }
 
-// Thêm 1 font custom vào tất cả select (dạng optgroup riêng), để chọn lại sau này
 function addCustomFontOption(fontName) {
   if (customFonts.has(fontName)) return;
   customFonts.add(fontName);
@@ -251,7 +244,7 @@ async function selectFontFor(targetId, fontName, selectEl) {
   if (ok) {
     targetEl.style.fontFamily = `"${fontName}", sans-serif`;
   } else {
-    alert(`Không load được font "${fontName}", thử font khác nha fen.`);
+    alert(`Failed to load font "${fontName}", please try another one.`);
   }
 }
 
@@ -263,7 +256,7 @@ async function handleCustomFontSubmit(form) {
 
   if (!fontName) return;
 
-  statusEl.textContent = "Đang kiểm tra...";
+  statusEl.textContent = "Checking...";
   statusEl.className = "custom-font-status text-[10px] text-gray-500 ml-1";
   input.disabled = true;
 
@@ -280,11 +273,11 @@ async function handleCustomFontSubmit(form) {
     const targetEl = document.getElementById(targetId);
     if (targetEl) targetEl.style.fontFamily = `"${fontName}", sans-serif`;
 
-    statusEl.textContent = "✓ Đã áp dụng";
+    statusEl.textContent = "✓ Applied";
     statusEl.className = "custom-font-status text-[10px] text-red-500 ml-1";
     input.value = "";
   } else {
-    statusEl.textContent = "✗ Không tìm thấy font này trên Google Fonts";
+    statusEl.textContent = "✗ Font not found on Google Fonts";
     statusEl.className = "custom-font-status text-[10px] text-orange-400 ml-1";
   }
 }
@@ -312,7 +305,6 @@ function changeRatio(ratio, btnElement) {
   btnElement.classList.add("neu-active", "text-red-500");
 }
 
-// Tính kích thước canvas kiểu "contain-fit": ưu tiên cố định chiều cao
 function fitCanvasToContainer() {
   const canvas = document.getElementById("preview-canvas");
   if (!canvas) return;
@@ -323,11 +315,9 @@ function fitCanvasToContainer() {
   const availableWidth = wrapper.clientWidth;
   const availableHeight = window.innerHeight * 0.62;
 
-  // Lấy chiều cao display làm chuẩn cố định
   let height = availableHeight;
   let width = height * (rw / rh);
 
-  // Chỉ scale lại nếu chiều ngang bị tràn khung (dành cho mobile)
   if (width > availableWidth) {
     width = availableWidth;
     height = width * (rh / rw);
@@ -337,7 +327,6 @@ function fitCanvasToContainer() {
   canvas.style.height = Math.floor(height) + "px";
 }
 
-// Debounce nhẹ cho resize/orientation change
 let resizeTimer = null;
 window.addEventListener("resize", () => {
   clearTimeout(resizeTimer);
@@ -399,7 +388,7 @@ function swapFonts() {
     el1.getAttribute("data-locked") === "true" ||
     el2.getAttribute("data-locked") === "true"
   ) {
-    alert("Mở khóa font trước khi Swap nha bro!");
+    alert("Unlock fonts before swapping, bro!");
     return;
   }
 
@@ -432,8 +421,7 @@ function resetAll() {
     if (select) select.value = cfg.font;
   });
 
-  // Reset lock icons về unlocked
-  document.querySelectorAll('[title="Khóa"]').forEach((btn) => {
+  document.querySelectorAll('[title="Lock/Unlock"]').forEach((btn) => {
     const icon = btn.querySelector("i");
     if (icon) {
       icon.classList.remove("fa-lock");
@@ -443,7 +431,6 @@ function resetAll() {
     btn.classList.add("text-gray-500");
   });
 
-  // Reset ratio về 16:9
   currentRatio = "16/9";
   fitCanvasToContainer();
   document.querySelectorAll(".ratio-btn").forEach((btn) => {
@@ -469,7 +456,7 @@ function downloadInfo() {
   const pad = (n) => String(n).padStart(2, "0");
   const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
 
-  const content = `=== FONTLAB NEUMORPHISM ===\nTạo lúc: ${now.toLocaleString("vi-VN")}\n\nText 1: ${f1} -> https://fonts.google.com/specimen/${f1.replace(/ /g, "+")}\nText 2: ${f2} -> https://fonts.google.com/specimen/${f2.replace(/ /g, "+")}\n`;
+  const content = `=== FONTLAB NEUMORPHISM ===\nCreated at: ${now.toLocaleString("en-US")}\n\nText 1: ${f1} -> https://fonts.google.com/specimen/${f1.replace(/ /g, "+")}\nText 2: ${f2} -> https://fonts.google.com/specimen/${f2.replace(/ /g, "+")}\n`;
 
   const blob = new Blob([content], { type: "text/plain" });
   const url = URL.createObjectURL(blob);

@@ -3,144 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Font Magic - Neumorphism</title>
+    <title>FontLab - Neumorphism</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
-    <style>
-      /* Base Dark Neumorphism */
-      body {
-        background-color: #18181b;
-        color: #e4e4e7;
-      }
-
-      /* Đổ bóng nổi (Flat/Raised) */
-      .neu-flat {
-        background: #18181b;
-        box-shadow:
-          8px 8px 16px #0a0a0b,
-          -8px -8px 16px #26262b;
-        border-radius: 2rem;
-      }
-
-      /* Đổ bóng chìm (Pressed/Input) */
-      .neu-pressed {
-        background: #18181b;
-        box-shadow:
-          inset 8px 8px 16px #0a0a0b,
-          inset -8px -8px 16px #26262b;
-        border-radius: 1.5rem;
-      }
-
-      /* Nút bấm (Button) */
-      .neu-btn {
-        background: #18181b;
-        box-shadow:
-          4px 4px 10px #0a0a0b,
-          -4px -4px 10px #26262b;
-        border-radius: 0.75rem;
-        transition: all 0.2s ease-in-out;
-        border: 1px solid transparent;
-      }
-      .neu-btn:hover {
-        color: #ef4444;
-      }
-      .neu-btn:active,
-      .neu-active {
-        box-shadow:
-          inset 4px 4px 8px #0a0a0b,
-          inset -4px -4px 8px #26262b;
-        color: #ef4444;
-      }
-
-      /* Tùy chỉnh thanh trượt (slider) phong cách chìm */
-      input[type="range"] {
-        -webkit-appearance: none;
-        width: 60px;
-        height: 6px;
-        background: #18181b;
-        box-shadow:
-          inset 2px 2px 5px #0a0a0b,
-          inset -2px -2px 5px #26262b;
-        border-radius: 4px;
-        outline: none;
-        flex-shrink: 0;
-      }
-      input[type="range"]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
-        background: #ef4444;
-        box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
-        cursor: pointer;
-        transition: 0.2s;
-      }
-      input[type="range"]::-webkit-slider-thumb:hover {
-        transform: scale(1.2);
-      }
-
-      /* Dropdown style */
-      select {
-        appearance: none;
-        background-color: transparent;
-        color: #ef4444;
-        font-weight: bold;
-        max-width: 110px;
-        flex-shrink: 0;
-      }
-      select option,
-      select optgroup {
-        background: #18181b;
-        color: #e4e4e7;
-      }
-      select:disabled {
-        opacity: 0.5;
-      }
-
-      /* Input text custom font */
-      .custom-font-input {
-        background: #18181b;
-        color: #e4e4e7;
-        width: 80px;
-        flex-shrink: 0;
-      }
-      .custom-font-input::placeholder {
-        color: #52525b;
-      }
-
-      /* Thanh toolbar 1 hàng, tự cuộn ngang khi hết chỗ, không bao giờ xuống hàng */
-      .text-toolbar {
-        display: flex;
-        flex-wrap: nowrap;
-        align-items: center;
-        gap: 0.5rem;
-        overflow-x: auto;
-        overflow-y: hidden;
-        scrollbar-width: thin;
-        -webkit-overflow-scrolling: touch;
-      }
-      .text-toolbar > * {
-        flex-shrink: 0;
-      }
-      .text-toolbar::-webkit-scrollbar {
-        height: 4px;
-      }
-
-      /* Thanh cuộn đỏ (global) */
-      ::-webkit-scrollbar {
-        width: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #18181b;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #ef4444;
-        border-radius: 3px;
-      }
-    </style>
+    <link rel="stylesheet" href="../../assets/css/neumorphism.css" />
   </head>
   <body
     class="min-h-screen flex items-center justify-center p-3 sm:p-6 font-sans antialiased"
@@ -152,12 +21,12 @@
       <div
         class="flex flex-wrap justify-between items-center gap-4 sm:gap-6 pb-2"
       >
-        <!-- Nút Back & Logo -->
+        <!-- Back Button & Logo -->
         <div class="flex items-center gap-4">
           <a
-            href="../index.html"
+            href="../../index.html"
             class="neu-btn w-10 h-10 flex items-center justify-center text-gray-500 hover:text-red-500 transition"
-            title="Về Hub"
+            title="Back to Hub"
           >
             <i class="fa-solid fa-arrow-left"></i>
           </a>
@@ -196,9 +65,8 @@
 
           <div class="w-px h-6 bg-zinc-800 hidden sm:block"></div>
 
-          <!-- Nhóm công cụ -->
+          <!-- Tool toggles -->
           <div class="flex flex-wrap gap-2 sm:gap-4">
-            <!-- Nút gọi Toolbar Text 1 & 2 -->
             <button
               onclick="togglePanel('toolbar-text-1')"
               class="neu-btn px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold text-gray-400 flex items-center gap-2"
@@ -214,7 +82,7 @@
 
             <div class="w-px h-6 bg-zinc-800 hidden sm:block"></div>
 
-            <!-- Các nút chức năng cũ -->
+            <!-- Action buttons -->
             <button
               onclick="swapFonts()"
               class="neu-btn px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-gray-400 flex items-center gap-2"
@@ -230,7 +98,7 @@
             <button
               onclick="resetAll()"
               class="neu-btn px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-gray-400 flex items-center gap-2"
-              title="Về mặc định"
+              title="Reset to default"
             >
               <i class="fa-solid fa-rotate-left"></i> Reset
             </button>
@@ -244,8 +112,9 @@
         </div>
       </div>
 
-      <!-- KHU VỰC TOOLBARS (Nằm cố định bên ngoài) -->
+      <!-- TOOLBARS -->
       <div class="w-full flex flex-col gap-2">
+        <!-- Toolbar 1 -->
         <div
           id="toolbar-text-1"
           class="text-toolbar hidden w-full px-2 sm:px-3 py-1.5 sm:py-2 neu-flat text-xs"
@@ -258,7 +127,7 @@
           <button
             onclick="toggleLock(this, 'text-1-input')"
             class="text-gray-500 hover:text-red-500 transition"
-            title="Khóa"
+            title="Lock/Unlock"
           >
             <i class="fa-solid fa-lock-open"></i>
           </button>
@@ -271,14 +140,14 @@
           <form class="custom-font-form flex items-center gap-1">
             <input
               type="text"
-              placeholder="Font khác..."
+              placeholder="Custom font..."
               class="custom-font-input neu-pressed text-[11px] px-2 py-1 outline-none"
               data-target="text-1-input"
             />
             <button
               type="submit"
               class="text-gray-500 hover:text-red-500 transition"
-              title="Áp dụng font custom"
+              title="Apply custom font"
             >
               <i class="fa-solid fa-check"></i>
             </button>
@@ -310,6 +179,7 @@
           </div>
         </div>
 
+        <!-- Toolbar 2 -->
         <div
           id="toolbar-text-2"
           class="text-toolbar hidden w-full px-2 sm:px-3 py-1.5 sm:py-2 neu-flat text-xs"
@@ -322,7 +192,7 @@
           <button
             onclick="toggleLock(this, 'text-2-input')"
             class="text-gray-500 hover:text-red-500 transition"
-            title="Khóa"
+            title="Lock/Unlock"
           >
             <i class="fa-solid fa-lock-open"></i>
           </button>
@@ -335,14 +205,14 @@
           <form class="custom-font-form flex items-center gap-1">
             <input
               type="text"
-              placeholder="Font khác..."
+              placeholder="Custom font..."
               class="custom-font-input neu-pressed text-[11px] px-2 py-1 outline-none"
               data-target="text-2-input"
             />
             <button
               type="submit"
               class="text-gray-500 hover:text-red-500 transition"
-              title="Áp dụng font custom"
+              title="Apply custom font"
             >
               <i class="fa-solid fa-check"></i>
             </button>
@@ -375,7 +245,7 @@
         </div>
       </div>
 
-      <!-- KHU VỰC CANVAS (Giờ chỉ chứa mỗi Text) -->
+      <!-- CANVAS -->
       <div class="flex justify-center w-full mt-2">
         <div
           id="preview-canvas"
@@ -390,7 +260,6 @@
           >
             NEUMORPHISM.
           </div>
-
           <div
             id="text-2-input"
             contenteditable="true"

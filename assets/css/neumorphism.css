@@ -1,0 +1,133 @@
+/* =========================================
+   Base Dark Neumorphism Styles
+   ========================================= */
+
+body {
+  background-color: #18181b;
+  color: #e4e4e7;
+}
+
+/* Flat / Raised Shadow (Containers & Cards) */
+.neu-flat {
+  background: #18181b;
+  box-shadow:
+    8px 8px 16px #0a0a0b,
+    -8px -8px 16px #26262b;
+  border-radius: 2rem;
+}
+
+/* Pressed / Inner Shadow (Inputs & Canvas) */
+.neu-pressed {
+  background: #18181b;
+  box-shadow:
+    inset 8px 8px 16px #0a0a0b,
+    inset -8px -8px 16px #26262b;
+  border-radius: 1.5rem;
+}
+
+/* Buttons */
+.neu-btn {
+  background: #18181b;
+  box-shadow:
+    4px 4px 10px #0a0a0b,
+    -4px -4px 10px #26262b;
+  border-radius: 0.75rem;
+  transition: all 0.2s ease-in-out;
+  border: 1px solid transparent;
+}
+.neu-btn:hover {
+  color: #ef4444;
+}
+.neu-btn:active,
+.neu-active {
+  box-shadow:
+    inset 4px 4px 8px #0a0a0b,
+    inset -4px -4px 8px #26262b;
+  color: #ef4444;
+}
+
+/* Custom Range Slider */
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 60px;
+  height: 6px;
+  background: #18181b;
+  box-shadow:
+    inset 2px 2px 5px #0a0a0b,
+    inset -2px -2px 5px #26262b;
+  border-radius: 4px;
+  outline: none;
+  flex-shrink: 0;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+  cursor: pointer;
+  transition: 0.2s;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* Dropdown styling */
+select {
+  appearance: none;
+  background-color: transparent;
+  color: #ef4444;
+  font-weight: bold;
+  max-width: 110px;
+  flex-shrink: 0;
+}
+select option,
+select optgroup {
+  background: #18181b;
+  color: #e4e4e7;
+}
+select:disabled {
+  opacity: 0.5;
+}
+
+/* Custom Font Text Input */
+.custom-font-input {
+  background: #18181b;
+  color: #e4e4e7;
+  width: 80px;
+  flex-shrink: 0;
+}
+.custom-font-input::placeholder {
+  color: #52525b;
+}
+
+/* Single-row Toolbar (Horizontal scroll) */
+.text-toolbar {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+.text-toolbar > * {
+  flex-shrink: 0;
+}
+.text-toolbar::-webkit-scrollbar {
+  height: 4px;
+}
+
+/* Global Red Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #18181b;
+}
+::-webkit-scrollbar-thumb {
+  background: #ef4444;
+  border-radius: 3px;
+}

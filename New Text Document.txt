@@ -1,0 +1,19 @@
+my-tools-hub/
+│
+├── assets/
+│   ├── css/
+│   │   └── neumorphism.css    # Chứa toàn bộ CSS đổ bóng, button, scrollbar dùng chung
+│   └── js/
+│       └── utils.js           # Các hàm JS dùng chung (nếu sau này có)
+│
+├── template/
+│   ├── index.html             # Master HTML template (đã link sẵn CSS/JS)
+│   └── script.js              # Template JS file
+│
+├── tools/
+│   └── font-lab/
+│       ├── index.html         # Đã dọn sạch CSS, 100% English
+│       └── script.js          # Code logic của FontLab, 100% English
+│
+├── index.html                 # Trang Hub chính (100% English)
+└── README.md                  # Giới thiệu project
