@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ratio Calculator - My Tools Hub</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 6 -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Shared Neumorphism DNA -->
+    <link rel="stylesheet" href="../../assets/css/neumorphism.css" />
+  </head>
+  <body
+    class="min-h-screen flex items-center justify-center p-3 sm:p-6 font-sans antialiased bg-zinc-900"
+  >
+    <div class="neu-flat w-full max-w-4xl p-6 sm:p-10 flex flex-col gap-8">
+      <!-- Header & Navigation -->
+      <div class="flex items-center gap-4 border-b border-zinc-800 pb-4">
+        <a
+          href="../../index.html"
+          class="neu-btn w-10 h-10 flex items-center justify-center text-gray-500 hover:text-red-500 transition"
+          title="Back to Hub"
+        >
+          <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <h1
+          class="text-xl sm:text-2xl font-extrabold tracking-widest text-red-500 uppercase flex items-center gap-3"
+        >
+          <i class="fa-solid fa-scale-balanced"></i> Ratio Calculator
+        </h1>
+      </div>
+
+      <!-- Main Content Area -->
+      <div
+        class="neu-pressed flex flex-col justify-center items-center p-8 gap-8 rounded-2xl"
+      >
+        <p class="text-gray-400 font-medium text-center">
+          Enter exactly 3 values to calculate the missing one <br />
+          <span class="text-sm text-zinc-500">( A : B = C : D )</span>
+        </p>
+
+        <!-- Calculator Inputs -->
+        <div
+          class="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-2xl font-bold w-full"
+        >
+          <!-- A -->
+          <div class="flex flex-col items-center gap-2 w-20 sm:w-28">
+            <label
+              for="valA"
+              class="text-xs text-gray-500 uppercase tracking-widest"
+              >Value A</label
+            >
+            <input
+              type="number"
+              id="valA"
+              class="neu-pressed w-full h-14 text-center text-white bg-transparent outline-none border-none focus:text-red-500 transition-colors"
+              placeholder="?"
+            />
+          </div>
+
+          <span class="text-gray-600 pb-2">:</span>
+
+          <!-- B -->
+          <div class="flex flex-col items-center gap-2 w-20 sm:w-28">
+            <label
+              for="valB"
+              class="text-xs text-gray-500 uppercase tracking-widest"
+              >Value B</label
+            >
+            <input
+              type="number"
+              id="valB"
+              class="neu-pressed w-full h-14 text-center text-white bg-transparent outline-none border-none focus:text-red-500 transition-colors"
+              placeholder="?"
+            />
+          </div>
+
+          <span class="text-red-500/50 pb-2 mx-2 sm:mx-4">=</span>
+
+          <!-- C -->
+          <div class="flex flex-col items-center gap-2 w-20 sm:w-28">
+            <label
+              for="valC"
+              class="text-xs text-gray-500 uppercase tracking-widest"
+              >Value C</label
+            >
+            <input
+              type="number"
+              id="valC"
+              class="neu-pressed w-full h-14 text-center text-white bg-transparent outline-none border-none focus:text-red-500 transition-colors"
+              placeholder="?"
+            />
+          </div>
+
+          <span class="text-gray-600 pb-2">:</span>
+
+          <!-- D -->
+          <div class="flex flex-col items-center gap-2 w-20 sm:w-28">
+            <label
+              for="valD"
+              class="text-xs text-gray-500 uppercase tracking-widest"
+              >Value D</label
+            >
+            <input
+              type="number"
+              id="valD"
+              class="neu-pressed w-full h-14 text-center text-white bg-transparent outline-none border-none focus:text-red-500 transition-colors"
+              placeholder="?"
+            />
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex gap-6 mt-4">
+          <button
+            id="btnCalc"
+            class="neu-btn px-8 py-3 text-white font-bold hover:text-red-500 transition uppercase tracking-wide flex items-center gap-2"
+          >
+            <i class="fa-solid fa-calculator"></i> Calculate
+          </button>
+          <button
+            id="btnClear"
+            class="neu-btn px-6 py-3 text-gray-500 font-bold hover:text-red-500 transition uppercase tracking-wide"
+          >
+            <i class="fa-solid fa-trash-can"></i> Clear
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
