@@ -1,0 +1,27 @@
+my-tools-hub/
+├── assets/
+│   ├── css/
+│   │   └── neumorphism.css
+│   └── img/
+│       └── favicon.png
+├── template/
+│   └── index-template.html
+├── tools/
+│   ├── case-converter/
+│   │   ├── index.html
+│   │   └── script.js
+│   ├── font-lab/
+│   │   ├── index.html
+│   │   └── script.js
+│   ├── ratio-calculator/
+│   │   ├── index.html
+│   │   └── script.js
+│   ├── url-extractor/
+│   │   ├── index.html
+│   │   └── script.js
+│   └── password-generator/
+│       ├── index.html
+│       └── script.js
+├── file tree.txt
+├── index.html
+└── README.md
