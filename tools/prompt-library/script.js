@@ -27,6 +27,10 @@ const exportBtn = document.getElementById("export-btn");
 const importBtn = document.getElementById("import-btn");
 const importFile = document.getElementById("import-file");
 
+// Search element
+const searchInput = document.getElementById("search-input");
+let searchQuery = "";
+
 let prompts = [];
 let activeMode = "add";
 let editingId = null;
@@ -148,44 +152,60 @@ function attachLightboxHandlers() {
 }
 
 function renderPrompts() {
-  if (!prompts.length) {
+  // Thực hiện lọc mảng dựa trên realtime text search
+  const filteredPrompts = prompts.filter(
+    (p) =>
+      p.title.toLowerCase().includes(searchQuery) ||
+      p.content.toLowerCase().includes(searchQuery),
+  );
+
+  if (!filteredPrompts.length) {
     promptList.innerHTML = `
       <div class="neu-pressed p-6 text-center text-gray-400 md:col-span-2">
-        <p class="text-lg font-semibold text-white">No prompts yet</p>
-        <p class="mt-2">Click Add Prompt to create your first one.</p>
+        <p class="text-lg font-semibold text-white">No prompts found</p>
+        <p class="mt-2">Try a different search keyword.</p>
       </div>
     `;
-    totalCount.textContent = "0";
-    statsBadge.textContent = "No prompts yet";
+    totalCount.textContent = prompts.length; // Tổng số thực
+    statsBadge.textContent = "0 matches found";
     hideLightbox();
     return;
   }
 
   totalCount.textContent = prompts.length;
-  statsBadge.textContent = `${prompts.length} prompts ready`;
+  statsBadge.textContent = `${filteredPrompts.length} prompts showing`;
 
-  promptList.innerHTML = prompts
+  promptList.innerHTML = filteredPrompts
     .map((prompt) => {
       const previewSrc = resolvePreviewSrc(prompt);
       const fallbackSrc = buildPreviewImage(prompt.title, prompt.content);
       const safeTitle = escapeHtml(prompt.title);
       const safeContent = escapeHtml(prompt.content);
+
+      // Tính năng: Check xem text có dài quá không để hiện nút "Xem thêm"
+      const needsExpand = safeContent.length > 130;
+
       return `
-        <article class="neu-pressed p-4 flex flex-col gap-3">
-          <div class="preview-frame rounded-2xl">
+        <article class="neu-pressed p-4 flex flex-col h-full gap-3">
+          <div class="preview-frame rounded-2xl shrink-0">
             <img src="${previewSrc}" alt="Preview for ${safeTitle}" onerror="this.onerror=null;this.src='${fallbackSrc}'" />
             <div class="zoom-badge">Hover to enlarge</div>
           </div>
 
-          <div class="flex-1">
+          <!-- Chỗ này flex-1 để nó tự đẩy action buttons xuống cuối thẻ -->
+          <div class="flex-1 flex flex-col">
             <div class="flex items-start justify-between gap-2">
               <h3 class="text-lg font-semibold text-white">${safeTitle}</h3>
               <span class="text-xs uppercase text-red-400">Prompt</span>
             </div>
-            <p class="text-sm text-gray-400 mt-2 leading-relaxed">${safeContent}</p>
+            
+            <div class="mt-2 flex-1">
+              <p class="text-sm text-gray-400 leading-relaxed transition-all duration-200 ${needsExpand ? "line-clamp-3" : ""}">${safeContent}</p>
+              ${needsExpand ? `<button data-action="toggle-expand" class="text-xs font-semibold text-gray-400 mt-2 hover:text-white transition">Show more</button>` : ""}
+            </div>
           </div>
 
-          <div class="flex gap-2">
+          <div class="flex gap-2 shrink-0 mt-2">
             <button data-action="copy" data-id="${prompt.id}" class="neu-btn flex-1 px-3 py-2 text-sm text-emerald-400 font-bold">
               <i class="fa-solid fa-copy"></i> Copy
             </button>
@@ -326,7 +346,6 @@ async function copyPromptContent(id, button) {
   }
 }
 
-// Tính năng Export Backup JSON
 function exportBackup() {
   const dataStr =
     "data:text/json;charset=utf-8," +
@@ -339,7 +358,6 @@ function exportBackup() {
   downloadAnchorNode.remove();
 }
 
-// Tính năng Import Backup JSON
 function importBackup(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -349,7 +367,6 @@ function importBackup(event) {
     try {
       const importedData = JSON.parse(e.target.result);
       if (Array.isArray(importedData)) {
-        // Gộp data cũ với data mới, hoặc đè lên tùy m (ở đây t chọn cách đè lên cho dễ quản lý)
         prompts = importedData;
         savePrompts();
         renderPrompts();
@@ -360,11 +377,16 @@ function importBackup(event) {
     } catch (err) {
       alert("Lỗi đọc file json cmnr.");
     }
-    // Reset file input để lần sau chọn lại file cũ vẫn ăn event onchange
     event.target.value = "";
   };
   reader.readAsText(file);
 }
+
+// Bắt sự kiện Realtime Search
+searchInput.addEventListener("input", (e) => {
+  searchQuery = e.target.value.toLowerCase();
+  renderPrompts();
+});
 
 // Event Listeners cho Backup
 exportBtn.addEventListener("click", exportBackup);
@@ -393,6 +415,16 @@ promptList.addEventListener("click", (event) => {
     openModal("delete", id);
   } else if (action === "copy") {
     copyPromptContent(id, button);
+  } else if (action === "toggle-expand") {
+    // Xử lý nút Show More / Show Less
+    const paragraphElement = button.previousElementSibling;
+    if (paragraphElement.classList.contains("line-clamp-3")) {
+      paragraphElement.classList.remove("line-clamp-3");
+      button.textContent = "Show less";
+    } else {
+      paragraphElement.classList.add("line-clamp-3");
+      button.textContent = "Show more";
+    }
   }
 });
 

@@ -107,7 +107,20 @@
           </div>
         </div>
 
-        <div class="flex flex-wrap gap-3">
+        <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <!-- Search Bar Realtime -->
+          <div class="relative w-full sm:w-64">
+            <input
+              type="text"
+              id="search-input"
+              class="neu-pressed w-full pl-10 pr-4 py-2 text-sm text-gray-200 outline-none rounded-xl"
+              placeholder="Search prompts..."
+            />
+            <i
+              class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"
+            ></i>
+          </div>
+
           <!-- Backup Controls -->
           <input type="file" id="import-file" class="hidden" accept=".json" />
           <button
@@ -129,8 +142,7 @@
             id="add-btn"
             class="neu-btn px-4 py-2 text-sm text-gray-300 font-medium flex items-center gap-2"
           >
-            <i class="fa-solid fa-plus"></i>
-            Add Prompt
+            <i class="fa-solid fa-plus"></i> Add Prompt
           </button>
         </div>
       </div>
@@ -140,9 +152,8 @@
           <div class="flex items-center justify-between flex-wrap gap-2">
             <span
               class="text-xs font-bold text-gray-500 uppercase tracking-wider"
+              >Library Status</span
             >
-              Library Status
-            </span>
             <span
               id="stats-badge"
               class="text-sm font-semibold text-red-400"
@@ -174,9 +185,14 @@
         </div>
       </div>
 
-      <div id="prompt-list" class="grid md:grid-cols-2 gap-4"></div>
+      <!-- Added items-stretch inside the grid so the columns stretch to max height -->
+      <div
+        id="prompt-list"
+        class="grid md:grid-cols-2 gap-4 items-stretch"
+      ></div>
     </div>
 
+    <!-- Modal Form (Không đổi nhiều so với nguyên bản) -->
     <div
       id="modal"
       class="fixed inset-0 bg-black/70 hidden items-center justify-center p-4 z-50"
@@ -223,7 +239,6 @@
                 placeholder="e.g. Blog Intro"
               />
             </div>
-
             <div>
               <label
                 for="content"
@@ -237,7 +252,6 @@
                 placeholder="Enter your prompt..."
               ></textarea>
             </div>
-
             <div>
               <label
                 for="image-url"
@@ -251,7 +265,6 @@
                 placeholder="https://... (leave blank to auto-generate)"
               />
             </div>
-
             <div class="neu-pressed p-3 rounded-2xl">
               <div
                 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2"
