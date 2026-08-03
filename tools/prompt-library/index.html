@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prompt Library - My Tools Hub</title>
+    <link rel="icon" type="image/x-icon" href="../../assets/img/favicon.png" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="../../assets/css/neumorphism.css" />
+    <style>
+      .preview-frame {
+        position: relative;
+        overflow: hidden;
+        border-radius: 1rem;
+      }
+
+      .preview-frame img {
+        width: 100%;
+        height: 180px;
+        object-fit: cover;
+        display: block;
+      }
+
+      .zoom-badge {
+        position: absolute;
+        bottom: 0.7rem;
+        right: 0.7rem;
+        padding: 0.35rem 0.65rem;
+        border-radius: 999px;
+        background: rgba(24, 24, 27, 0.8);
+        color: #fda4af;
+        font-size: 0.7rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        opacity: 0.9;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .lightbox-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 60;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.8);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.18s ease;
+        padding: 2rem;
+      }
+
+      .lightbox-overlay.active {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .lightbox-overlay img {
+        max-width: min(90vw, 900px);
+        max-height: 85vh;
+        border-radius: 1.25rem;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        transform: scale(0.94);
+        transition: transform 0.18s ease;
+      }
+
+      .lightbox-overlay.active img {
+        transform: scale(1);
+      }
+    </style>
+  </head>
+  <body
+    class="min-h-screen flex items-center justify-center p-3 sm:p-6 font-sans antialiased bg-zinc-900"
+  >
+    <div
+      class="neu-flat w-full max-w-6xl p-4 sm:p-8 flex flex-col gap-4 sm:gap-6"
+    >
+      <div class="flex items-center justify-between gap-4 pb-2 flex-wrap">
+        <div class="flex items-center gap-4">
+          <a
+            href="../../index.html"
+            class="neu-btn w-10 h-10 flex items-center justify-center text-gray-500 hover:text-red-500 transition"
+            title="Back to Hub"
+          >
+            <i class="fa-solid fa-arrow-left"></i>
+          </a>
+          <div>
+            <h1
+              class="text-xl sm:text-2xl font-extrabold tracking-widest text-red-500 uppercase flex items-center gap-2"
+            >
+              <i class="fa-solid fa-book-open"></i> Prompt Library
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">
+              Create, edit, delete prompts and preview them as images right in
+              your browser.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-3">
+          <!-- Backup Controls -->
+          <input type="file" id="import-file" class="hidden" accept=".json" />
+          <button
+            id="import-btn"
+            class="neu-btn px-4 py-2 text-sm text-gray-300 font-medium flex items-center gap-2"
+            title="Import from Backup"
+          >
+            <i class="fa-solid fa-file-import"></i>
+          </button>
+          <button
+            id="export-btn"
+            class="neu-btn px-4 py-2 text-sm text-gray-300 font-medium flex items-center gap-2"
+            title="Export Backup"
+          >
+            <i class="fa-solid fa-file-export"></i>
+          </button>
+
+          <button
+            id="add-btn"
+            class="neu-btn px-4 py-2 text-sm text-gray-300 font-medium flex items-center gap-2"
+          >
+            <i class="fa-solid fa-plus"></i>
+            Add Prompt
+          </button>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-[1.15fr_0.85fr] gap-4">
+        <div class="neu-pressed p-4 sm:p-5 flex flex-col gap-3">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <span
+              class="text-xs font-bold text-gray-500 uppercase tracking-wider"
+            >
+              Library Status
+            </span>
+            <span
+              id="stats-badge"
+              class="text-sm font-semibold text-red-400"
+            ></span>
+          </div>
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div class="neu-flat p-3 rounded-2xl">
+              <div class="text-xs uppercase text-gray-500">Total</div>
+              <div id="total-count" class="text-xl font-bold text-white">0</div>
+            </div>
+            <div class="neu-flat p-3 rounded-2xl">
+              <div class="text-xs uppercase text-gray-500">Storage</div>
+              <div class="text-xl font-bold text-white">Local + JSON</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="neu-pressed p-4 sm:p-5 text-sm text-gray-400">
+          <p class="font-semibold text-gray-300 mb-2">How it works</p>
+          <ul class="list-disc ml-5 space-y-1">
+            <li>Each prompt gets a rendered image preview.</li>
+            <li>Hover over a preview to see it enlarged in a lightbox.</li>
+            <li>Use <strong>Export/Import</strong> to backup your prompts.</li>
+            <li>
+              Paste your own image link for the preview, or leave it blank to
+              auto-generate one.
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div id="prompt-list" class="grid md:grid-cols-2 gap-4"></div>
+    </div>
+
+    <div
+      id="modal"
+      class="fixed inset-0 bg-black/70 hidden items-center justify-center p-4 z-50"
+    >
+      <div class="neu-flat w-full max-w-2xl p-4 sm:p-6 flex flex-col gap-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2
+              id="modal-title"
+              class="text-lg font-bold text-white uppercase tracking-wider"
+            ></h2>
+            <p id="modal-description" class="text-sm text-gray-500 mt-1"></p>
+          </div>
+          <button
+            id="close-modal"
+            class="neu-btn w-10 h-10 flex items-center justify-center text-gray-500"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <form id="prompt-form" class="flex flex-col gap-3">
+          <div
+            id="delete-summary"
+            class="hidden neu-pressed p-4 rounded-2xl text-sm text-gray-400"
+          >
+            <p class="font-semibold text-white mb-2">
+              You're about to delete this prompt
+            </p>
+            <p id="delete-title" class="text-red-400"></p>
+          </div>
+
+          <div id="form-body" class="flex flex-col gap-3">
+            <div>
+              <label
+                for="title"
+                class="text-xs font-bold text-gray-500 uppercase tracking-wider"
+                >Title</label
+              >
+              <input
+                id="title"
+                type="text"
+                class="neu-pressed w-full mt-2 p-3 text-gray-200 outline-none rounded-xl"
+                placeholder="e.g. Blog Intro"
+              />
+            </div>
+
+            <div>
+              <label
+                for="content"
+                class="text-xs font-bold text-gray-500 uppercase tracking-wider"
+                >Prompt Content</label
+              >
+              <textarea
+                id="content"
+                rows="6"
+                class="neu-pressed w-full mt-2 p-3 text-gray-200 outline-none rounded-xl"
+                placeholder="Enter your prompt..."
+              ></textarea>
+            </div>
+
+            <div>
+              <label
+                for="image-url"
+                class="text-xs font-bold text-gray-500 uppercase tracking-wider"
+                >Preview Image URL (optional)</label
+              >
+              <input
+                id="image-url"
+                type="url"
+                class="neu-pressed w-full mt-2 p-3 text-gray-200 outline-none rounded-xl"
+                placeholder="https://... (leave blank to auto-generate)"
+              />
+            </div>
+
+            <div class="neu-pressed p-3 rounded-2xl">
+              <div
+                class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2"
+              >
+                Preview
+              </div>
+              <img
+                id="preview-image"
+                src=""
+                alt="PromptPreview"
+                class="w-full h-44 object-cover rounded-2xl"
+              />
+            </div>
+          </div>
+
+          <p id="form-error" class="text-sm text-red-400 hidden"></p>
+
+          <div class="flex justify-end gap-2 mt-2">
+            <button
+              id="cancel-modal"
+              type="button"
+              class="neu-btn px-4 py-2 text-sm text-gray-300"
+            >
+              Cancel
+            </button>
+            <button
+              id="submit-btn"
+              type="submit"
+              class="neu-btn px-4 py-2 text-sm text-gray-300"
+            >
+              Save
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="lightbox" class="lightbox-overlay">
+      <img id="lightbox-img" src="" alt="Enlarged preview" />
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
