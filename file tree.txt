@@ -13,16 +13,19 @@ my-tools-hub/
 │   ├── font-lab/
 │   │   ├── index.html
 │   │   └── script.js
-│   ├── ratio-calculator/
-│   │   ├── index.html
-│   │   └── script.js
-│   ├── url-extractor/
-│   │   ├── index.html
-│   │   └── script.js
 │   ├── password-generator/
 │   │   ├── index.html
 │   │   └── script.js
-│   └── text-to-mp3/
+│   ├── prompt-library/
+│   │   ├── index.html
+│   │   └── script.js
+│   ├── ratio-calculator/
+│   │   ├── index.html
+│   │   └── script.js
+│   ├── story-builder/
+│   │   ├── index.html
+│   │   ├── script.js
+│   └── url-extractor/
 │       ├── index.html
 │       └── script.js
 ├── file tree.txt

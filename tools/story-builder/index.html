@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Story Builder - My Tools Hub</title>
+    <link rel="icon" type="image/x-icon" href="../../assets/img/favicon.png" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Shared Neumorphism DNA -->
+    <link rel="stylesheet" href="../../assets/css/neumorphism.css" />
+    <!-- Local Story Builder styles -->
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body
+    class="min-h-screen flex items-center justify-center p-3 sm:p-6 font-sans antialiased bg-[#181818]"
+  >
+    <div class="neu-flat w-full p-4 sm:p-8 flex flex-col gap-4 sm:gap-8">
+      <div class="flex items-center gap-4 pb-2">
+        <a
+          href="../../index.html"
+          class="neu-btn w-10 h-10 flex items-center justify-center text-gray-500 hover:text-red-500 transition"
+          title="Back to Hub"
+        >
+          <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <h1
+          class="text-xl sm:text-2xl font-extrabold tracking-widest text-red-500 uppercase flex items-center gap-2"
+        >
+          <i class="fa-solid fa-book-open"></i> Story Builder
+        </h1>
+      </div>
+
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="sidebar-brand">
+            <div class="logo"></div>
+            <div>
+              <h2>Story Builder</h2>
+              <p>Create an emotional short story brief.</p>
+            </div>
+          </div>
+          <nav class="sidebar-nav">
+            <button data-scroll="story-brief">Story Brief</button>
+            <button data-scroll="characters">Characters</button>
+            <button data-scroll="plot">Plot</button>
+            <button data-scroll="emotion">Emotion</button>
+            <button data-scroll="ai-prompt">AI Prompt</button>
+            <button data-scroll="export-section">Export</button>
+          </nav>
+        </aside>
+
+        <main class="content">
+          <header class="topbar">
+            <div>
+              <h2>Story Builder</h2>
+              <p>Create a complete story brief with emotional beats.</p>
+            </div>
+            <div class="topbar-actions">
+              <button id="btnClear" class="secondary">Clear All</button>
+            </div>
+          </header>
+
+          <section class="panel" id="story-brief" data-collapsible>
+            <div class="panel-header">
+              <h3>Story Brief</h3>
+              <button class="collapse-toggle">Collapse</button>
+            </div>
+            <div class="panel-body">
+              <div class="field-grid">
+                <label
+                  >Title
+                  <span
+                    class="tooltip-icon"
+                    title="Story title should be catchy and memorable."
+                    >?</span
+                  >
+                  <input
+                    type="text"
+                    data-storage="title"
+                    placeholder="Story title"
+                  />
+                </label>
+                <label
+                  >One-line idea
+                  <span
+                    class="tooltip-icon"
+                    title="Summarize the main idea in one short sentence."
+                    >?</span
+                  >
+                  <input
+                    type="text"
+                    data-storage="oneLineIdea"
+                    placeholder="One-line idea"
+                  />
+                </label>
+                <label
+                  >Genre
+                  <span
+                    class="tooltip-icon"
+                    title="Main genre: fantasy, romance, horror, etc."
+                    >?</span
+                  >
+                  <input type="text" data-storage="genre" placeholder="Genre" />
+                </label>
+                <label
+                  >Tone
+                  <span
+                    class="tooltip-icon"
+                    title="Overall mood: dark, warm, tense, deep."
+                    >?</span
+                  >
+                  <input type="text" data-storage="tone" placeholder="Tone" />
+                </label>
+                <label
+                  >Ending
+                  <span
+                    class="tooltip-icon"
+                    title="Desired ending type: open, complete, tragic, hopeful."
+                    >?</span
+                  >
+                  <input
+                    type="text"
+                    data-storage="ending"
+                    placeholder="Ending"
+                  />
+                </label>
+                <label
+                  >Target word count
+                  <span
+                    class="tooltip-icon"
+                    title="Preferred story length: 1000-2500 words."
+                    >?</span
+                  >
+                  <input
+                    type="text"
+                    data-storage="wordCount"
+                    placeholder="1000-2500"
+                  />
+                </label>
+                <label
+                  >Point of view
+                  <span
+                    class="tooltip-icon"
+                    title="Narration style: first person, third person, etc."
+                    >?</span
+                  >
+                  <input
+                    type="text"
+                    data-storage="pov"
+                    placeholder="Point of view"
+                  />
+                </label>
+                <label
+                  >Target audience
+                  <span
+                    class="tooltip-icon"
+                    title="Primary intended readers for the story."
+                    >?</span
+                  >
+                  <input
+                    type="text"
+                    data-storage="audience"
+                    placeholder="Target audience"
+                  />
+                </label>
+                <label
+                  >Theme
+                  <span
+                    class="tooltip-icon"
+                    title="Underlying meaning or central message of the story."
+                    >?</span
+                  >
+                  <input type="text" data-storage="theme" placeholder="Theme" />
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel" id="characters" data-collapsible>
+            <div class="panel-header">
+              <h3>Characters</h3>
+              <div class="panel-controls">
+                <button id="addCharacter">+ Add Character</button>
+                <button class="collapse-toggle">Collapse</button>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div id="characterList" class="card-list"></div>
+            </div>
+          </section>
+
+          <section class="panel" id="plot" data-collapsible>
+            <div class="panel-header">
+              <h3>Plot</h3>
+              <button class="collapse-toggle">Collapse</button>
+            </div>
+            <div class="panel-body">
+              <div class="field-grid">
+                <label
+                  >Hook
+                  <span
+                    class="tooltip-icon"
+                    title="The opening moment that makes readers want to continue."
+                    >?</span
+                  >
+                  <textarea
+                    data-storage="plotHook"
+                    placeholder="Hook"
+                  ></textarea>
+                </label>
+                <label
+                  >Opening
+                  <span
+                    class="tooltip-icon"
+                    title="How the story begins and introduces characters."
+                    >?</span
+                  >
+                  <textarea
+                    data-storage="plotOpening"
+                    placeholder="Opening"
+                  ></textarea>
+                </label>
+                <label
+                  >Inciting incident
+                  <span
+                    class="tooltip-icon"
+                    title="The event that changes the story's direction."
+                    >?</span
+                  >
+                  <textarea
+                    data-storage="plotInciting"
+                    placeholder="Inciting incident"
+                  ></textarea>
+                </label>
+                <label
+                  >Rising action
+                  <span
+                    class="tooltip-icon"
+                    title="The sequence of events building tension and conflict."
+                    >?</span
+                  >
+                  <textarea
+                    data-storage="plotRising"
+                    placeholder="Rising action"
+                  ></textarea>
+                </label>
+                <label
+                  >Midpoint
+                  <span
+                    class="tooltip-icon"
+                    title="A key turning point in the story."
+                    >?</span
+                  >
+                  <textarea
+                    data-storage="plotMidpoint"
+                    placeholder="Midpoint"
+                  ></textarea>
+                </label>
+                <label
+                  >Twist
+                  <span
+                    class="tooltip-icon"
+                    title="A surprise or major shift in the story."
+                    >?</span
+                  >
+                  <textarea
+                    data-storage="plotTwist"
+                    placeholder="Twist"
+                  ></textarea>
+                </label>
+                <label
+                  >Climax
+                  <span
+                    class="tooltip-icon"
+                    title="The most intense emotional or conflict moment."
+                    >?</span
+                  >
+                  <textarea
+                    data-storage="plotClimax"
+                    placeholder="Climax"
+                  ></textarea>
+                </label>
+                <label
+                  >Ending
+                  <span
+                    class="tooltip-icon"
+                    title="How the story resolves based on the planned conclusion."
+                    >?</span
+                  >
+                  <textarea
+                    data-storage="plotEnding"
+                    placeholder="Ending"
+                  ></textarea>
+                </label>
+                <label
+                  >Message (optional)
+                  <span
+                    class="tooltip-icon"
+                    title="Any lesson or meaning you want to include."
+                    >?</span
+                  >
+                  <textarea
+                    data-storage="plotMoral"
+                    placeholder="Message (optional)"
+                  ></textarea>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel" id="emotion" data-collapsible>
+            <div class="panel-header">
+              <h3>Emotion</h3>
+              <button class="collapse-toggle">Collapse</button>
+            </div>
+            <div class="panel-body">
+              <div class="field-grid">
+                <label
+                  >Beginning emotion
+                  <span
+                    class="tooltip-icon"
+                    title="Mood at the start of the story."
+                    >?</span
+                  >
+                  <input
+                    type="text"
+                    data-storage="emotionBeginning"
+                    placeholder="Beginning emotion"
+                  />
+                </label>
+                <label
+                  >Middle emotion
+                  <span
+                    class="tooltip-icon"
+                    title="Character emotions as the story develops."
+                    >?</span
+                  >
+                  <input
+                    type="text"
+                    data-storage="emotionMiddle"
+                    placeholder="Middle emotion"
+                  />
+                </label>
+                <label
+                  >Peak emotion
+                  <span
+                    class="tooltip-icon"
+                    title="Highest emotional point in the story."
+                    >?</span
+                  >
+                  <input
+                    type="text"
+                    data-storage="emotionPeak"
+                    placeholder="Peak emotion"
+                  />
+                </label>
+                <label
+                  >Ending emotion
+                  <span
+                    class="tooltip-icon"
+                    title="Final mood when the story wraps up."
+                    >?</span
+                  >
+                  <input
+                    type="text"
+                    data-storage="emotionEnding"
+                    placeholder="Ending emotion"
+                  />
+                </label>
+                <label
+                  >Reader takeaway
+                  <span
+                    class="tooltip-icon"
+                    title="What readers should feel or learn."
+                    >?</span
+                  >
+                  <textarea
+                    data-storage="emotionTakeaway"
+                    placeholder="Reader takeaway"
+                  ></textarea>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel" id="ai-prompt" data-collapsible>
+            <div class="panel-header">
+              <h3>AI Prompt</h3>
+              <button class="collapse-toggle">Collapse</button>
+            </div>
+            <div class="panel-body">
+              <label><textarea id="promptOutput" readonly></textarea></label>
+              <div class="ai-actions">
+                <button id="btnGenerate">Generate Prompt</button>
+              </div>
+            </div>
+          </section>
+
+          <section
+            class="panel export-panel"
+            id="export-section"
+            data-collapsible
+          >
+            <div class="panel-header">
+              <h3>Export</h3>
+              <button class="collapse-toggle">Collapse</button>
+            </div>
+            <div class="panel-body export-body">
+              <div class="export-grid">
+                <button id="exportTxt">Export TXT</button>
+                <button id="exportMd">Export Markdown</button>
+                <button id="exportJson">Export JSON</button>
+                <button id="copyPrompt" class="secondary">Copy Prompt</button>
+                <button id="copyBrief" class="secondary">Copy Brief</button>
+                <button id="importJson" class="secondary">Import JSON</button>
+                <button id="importTxt" class="secondary">Import TXT</button>
+                <button id="btnClearConfirm" class="danger">Clear All</button>
+              </div>
+              <input
+                type="file"
+                id="fileInput"
+                accept="application/json,text/plain"
+                hidden
+              />
+            </div>
+          </section>
+        </main>
+      </div>
+
+      <div class="toast" id="toast"></div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

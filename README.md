@@ -49,14 +49,21 @@ Create strong random passwords with full control over length and character types
 - Uses `crypto.getRandomValues` for secure randomness.
 - Strength estimate, show/hide toggle, and one-click copy.
 
-### 6. [Text to MP3](./tools/text-to-mp3/index.html)
+### 6. [Prompt Library](./tools/prompt-library/index.html)
 
-Convert text into downloadable MP3 audio with browser-based preview.
+Collect and manage creative prompts in a small personal library.
 
-- Paste text or import a `.txt` file.
-- Preview spoken audio in the browser.
-- Download generated MP3 using external TTS chunk requests.
-- Designed for fast, accessible text-to-speech workflows.
+- Browse prompt cards with preview details.
+- Add, edit, and delete prompt entries.
+- Designed for quick reuse and inspiration.
+
+### 7. [Story Builder](./tools/story-builder/index.html)
+
+Create structured story briefs and AI prompts for short fiction.
+
+- Build character cards, plot beats, and emotional arcs.
+- Generate an AI-ready prompt and export brief as TXT/MD/JSON.
+- Uses the shared Dark Neumorphism theme for consistent UI.
 
 _(More tools coming soon...)_
 

@@ -1,0 +1,397 @@
+/* Story Builder custom layout */
+.app-shell {
+  display: block;
+  position: relative;
+}
+
+.sidebar {
+  position: fixed;
+  top: 8rem;
+  left: 2.5rem;
+  width: 280px;
+  max-width: calc(100% - 3rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1rem;
+  background: rgba(24, 24, 27, 0.9);
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  z-index: 10;
+}
+
+.content {
+  margin-left: calc(280px + 1.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.sidebar-brand .logo {
+  width: 46px;
+  height: 46px;
+  border-radius: 1rem;
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.25),
+    rgba(248, 113, 113, 0.12)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-brand h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.sidebar-brand p {
+  margin: 0.35rem 0 0;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.sidebar-nav {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.sidebar-nav button {
+  width: 100%;
+  text-align: left;
+  padding: 0.95rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: #e2e8f0;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.sidebar-nav button:hover,
+.sidebar-nav button:focus {
+  background: rgba(239, 68, 68, 0.15);
+  transform: translateX(1px);
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.topbar h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.topbar p {
+  margin: 0.45rem 0 0;
+  color: #cbd5e1;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.panel {
+  background: rgba(24, 24, 27, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 1.5rem;
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.panel-controls,
+.ai-actions,
+.export-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.panel-body {
+  padding: 1.25rem;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.field-grid label,
+.card-row .card-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.field-grid label {
+  color: #e2e8f0;
+}
+
+.field-grid input,
+.field-grid textarea,
+.card-field input,
+.card-field textarea,
+.card-field select,
+#promptOutput {
+  width: 100%;
+  padding: 0.95rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.85);
+  color: #e2e8f0;
+  resize: vertical;
+  min-height: 3rem;
+}
+
+.field-grid textarea,
+.card-field textarea,
+#promptOutput {
+  min-height: 5rem;
+}
+
+.field-grid input::placeholder,
+.field-grid textarea::placeholder,
+.card-field input::placeholder,
+.card-field textarea::placeholder {
+  color: #64748b;
+}
+
+.tooltip-icon {
+  display: inline-block;
+  margin-left: 0.35rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  font-size: 0.8rem;
+  line-height: 1.2rem;
+  text-align: center;
+  cursor: help;
+}
+
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.card {
+  padding: 1rem;
+  gap: 1rem;
+  border-radius: 1.3rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.9);
+  display: flex;
+  flex-direction: column;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.card-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.card-meta {
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.card-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.small-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.card-field {
+  width: 100%;
+}
+
+button,
+.secondary,
+.danger {
+  cursor: pointer;
+  border: none;
+  border-radius: 9999px;
+  padding: 0.85rem 1.25rem;
+  font-weight: 700;
+  transition:
+    transform 0.15s ease,
+    background 0.2s ease;
+}
+
+button:hover,
+.secondary:hover,
+.danger:hover {
+  transform: translateY(-1px);
+}
+
+button {
+  background: #ef4444;
+  color: white;
+}
+
+.secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+}
+
+.danger {
+  background: rgba(248, 113, 113, 0.18);
+  color: #fecaca;
+}
+
+button:active,
+.secondary:active,
+.danger:active {
+  transform: translateY(0);
+}
+
+#promptOutput {
+  min-height: 10rem;
+  font-family: inherit;
+}
+
+.export-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.export-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.panel.collapsed .panel-body {
+  display: none;
+}
+
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.9rem 1.25rem;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.95);
+  color: #e2e8f0;
+  font-weight: 700;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 50;
+}
+
+.toast.visible {
+  opacity: 1;
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    position: fixed;
+    top: auto;
+    bottom: 2rem;
+    right: 1.5rem;
+    left: auto;
+    width: 3.5rem; /* Thu lại thành hình vuông nhỏ */
+    height: 3.5rem;
+    border-radius: 50%; /* Bo tròn thành bubble */
+    padding: 0.35rem; /* Ép logo vào giữa bubble */
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 999; /* Đảm bảo nổi lên trên cùng */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Khi chạm (hoặc hover) vào bubble thì bung menu ra */
+  .sidebar:hover,
+  .sidebar:focus-within {
+    width: 260px;
+    height: auto;
+    max-height: 80vh; /* Tránh tràn màn hình */
+    border-radius: 1.5rem;
+    padding: 1rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Ẩn chữ và menu khi đang thu nhỏ thành bubble */
+  .sidebar-brand h2,
+  .sidebar-brand p,
+  .sidebar-nav {
+    opacity: 0;
+    pointer-events: none; /* Tránh bấm nhầm khi đang thu nhỏ */
+    transition: opacity 0.2s ease;
+  }
+
+  /* Hiện lại chữ khi bung menu */
+  .sidebar:hover .sidebar-brand h2,
+  .sidebar:hover .sidebar-brand p,
+  .sidebar:hover .sidebar-nav {
+    opacity: 1;
+    pointer-events: auto;
+    transition-delay: 0.1s; /* Hiện ra mượt hơn tí sau khi bung */
+  }
+
+  .content {
+    margin-left: 0;
+    padding-bottom: 5rem; /* Đẩy nội dung lên để không bị bubble che ở góc */
+  }
+}
+
+@media (max-width: 768px) {
+  .field-grid,
+  .export-grid,
+  .small-row {
+    grid-template-columns: 1fr;
+  }
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
