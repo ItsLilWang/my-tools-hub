@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Text to MP3 - My Tools Hub</title>
+    <link rel="icon" type="image/x-icon" href="../../assets/img/favicon.png" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Shared Neumorphism DNA -->
+    <link rel="stylesheet" href="../../assets/css/neumorphism.css" />
+  </head>
+  <body class="min-h-screen flex items-center justify-center p-4 sm:p-6 font-sans antialiased bg-zinc-900">
+    <div class="neu-flat w-full max-w-5xl p-5 sm:p-7 flex flex-col gap-5">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-center gap-3">
+          <a
+            href="../../index.html"
+            class="neu-btn w-10 h-10 flex items-center justify-center text-gray-500 hover:text-red-500 transition"
+            title="Back to Hub"
+          >
+            <i class="fa-solid fa-arrow-left"></i>
+          </a>
+          <div>
+            <h1 class="text-xl sm:text-2xl font-extrabold tracking-widest text-red-500 uppercase flex items-center gap-2">
+              <i class="fa-solid fa-file-audio"></i>
+              Text to MP3
+            </h1>
+            <p class="text-gray-400 text-sm mt-1 max-w-2xl">
+              Paste text or load a .txt file, preview speech, then download a generated MP3.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+        <section class="neu-pressed p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h2 class="text-base font-bold uppercase tracking-wider text-white">Text Input</h2>
+              <p class="text-gray-500 text-xs">Type or import a .txt file with your content.</p>
+            </div>
+            <label class="neu-btn px-4 py-2 text-sm text-gray-300 font-medium cursor-pointer">
+              <i class="fa-solid fa-file-import"></i>
+              <span>Import TXT</span>
+              <input id="txt-file" type="file" accept=".txt" class="hidden" />
+            </label>
+          </div>
+
+          <textarea
+            id="text-input"
+            class="neu-pressed w-full min-h-[240px] p-4 text-gray-200 bg-transparent outline-none resize-none placeholder:text-gray-500"
+            placeholder="Enter or paste your text here..."
+          ></textarea>
+
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex flex-col gap-1">
+              <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Voice</span>
+              <span class="text-sm text-white">Ava Multilingual (en-US-AvaMultilingualNeural)</span>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button id="preview-btn" class="neu-btn px-4 py-2 text-sm text-gray-300 font-medium flex items-center gap-2 transition">
+                <i class="fa-solid fa-play"></i>
+                Preview
+              </button>
+              <button id="download-btn" class="neu-btn px-4 py-2 text-sm text-gray-300 font-medium flex items-center gap-2 transition">
+                <i class="fa-solid fa-download"></i>
+                Download MP3
+              </button>
+            </div>
+          </div>
+
+          <div class="neu-flat p-4 rounded-3xl text-sm text-gray-400 bg-zinc-950">
+            <p><strong>Note:</strong> Text is split into short chunks to generate audio reliably.</p>
+            <p class="mt-2">If the MP3 download fails, use Preview to verify text before retrying.</p>
+          </div>
+        </section>
+
+        <aside class="neu-pressed p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="text-base font-bold uppercase tracking-wider text-white">Conversion Status</h2>
+            <span id="char-count" class="text-xs text-red-500">0 chars</span>
+          </div>
+
+          <div class="neu-pressed rounded-3xl p-4 min-h-[220px] text-gray-300 overflow-hidden">
+            <pre id="status-log" class="whitespace-pre-wrap break-words text-sm leading-6"></pre>
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <div class="flex items-center justify-between text-xs text-gray-500">
+              <span>File type</span>
+              <span>MP3</span>
+            </div>
+            <div class="flex items-center justify-between text-xs text-gray-500">
+              <span>Max chunk size</span>
+              <span>200 chars / request</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

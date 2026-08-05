@@ -49,6 +49,15 @@ Create strong random passwords with full control over length and character types
 - Uses `crypto.getRandomValues` for secure randomness.
 - Strength estimate, show/hide toggle, and one-click copy.
 
+### 6. [Text to MP3](./tools/text-to-mp3/index.html)
+
+Convert text into downloadable MP3 audio with browser-based preview.
+
+- Paste text or import a `.txt` file.
+- Preview spoken audio in the browser.
+- Download generated MP3 using external TTS chunk requests.
+- Designed for fast, accessible text-to-speech workflows.
+
 _(More tools coming soon...)_
 
 ## 🎨 UI/UX DNA: Dark Neumorphism
