@@ -13,7 +13,16 @@ A lightning-fast font tester designed for creators and UI/UX designers.
 - Neumorphic controls for font size, weight, and ratio testing.
 - Export font combinations easily.
 
-### 2. [Ratio Calculator](./tools/ratio-calculator/index.html)
+### 2. [Scene Exporter](./tools/scene-exporter/index.html)
+
+Manage a list of scenes and automatically generate numbered filenames for export.
+
+- Add scenes with a shared base name.
+- Generates names like `story_3 (13).png` automatically.
+- Tracks the total scene list in real time.
+- Exports the final data as a JSON file.
+
+### 3. [Ratio Calculator](./tools/ratio-calculator/index.html)
 
 Quickly calculate missing values for A:B = C:D ratios. Perfect for resizing and scaling.
 
@@ -22,7 +31,7 @@ Quickly calculate missing values for A:B = C:D ratios. Perfect for resizing and 
 - Smart error handling (prevents division by zero).
 - Clean Neumorphic input fields and result highlight.
 
-### 3. [Case Converter](./tools/case-converter/index.html)
+### 4. [Case Converter](./tools/case-converter/index.html)
 
 Convert any text between common casing styles in one click.
 
@@ -31,7 +40,7 @@ Convert any text between common casing styles in one click.
 - Live re-conversion as you type, with char/word counter.
 - One-click Copy button with instant feedback.
 
-### 4. [URL Extractor](./tools/url-extractor/index.html)
+### 5. [URL Extractor](./tools/url-extractor/index.html)
 
 Extract every URL from plain text in seconds.
 
@@ -40,7 +49,7 @@ Extract every URL from plain text in seconds.
 - Optional deduplication toggle with live extraction as you type.
 - Copy all results in one click.
 
-### 5. [Password Generator](./tools/password-generator/index.html)
+### 6. [Password Generator](./tools/password-generator/index.html)
 
 Create strong random passwords with full control over length and character types.
 
@@ -49,7 +58,7 @@ Create strong random passwords with full control over length and character types
 - Uses `crypto.getRandomValues` for secure randomness.
 - Strength estimate, show/hide toggle, and one-click copy.
 
-### 6. [Prompt Library](./tools/prompt-library/index.html)
+### 7. [Prompt Library](./tools/prompt-library/index.html)
 
 Collect and manage creative prompts in a small personal library.
 
@@ -57,7 +66,7 @@ Collect and manage creative prompts in a small personal library.
 - Add, edit, and delete prompt entries.
 - Designed for quick reuse and inspiration.
 
-### 7. [Story Builder](./tools/story-builder/index.html)
+### 8. [Story Builder](./tools/story-builder/index.html)
 
 Create structured story briefs and AI prompts for short fiction.
 
