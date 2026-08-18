@@ -1,209 +1,158 @@
-const sceneNameInput = document.getElementById("scene-name");
-const sceneContentInput = document.getElementById("scene-content");
-const addSceneButton = document.getElementById("add-scene-btn");
-const exportButton = document.getElementById("export-btn");
-const clearButton = document.getElementById("clear-btn");
+const jsonInput = document.getElementById("json-input");
+const fileInput = document.getElementById("file-input");
+const uploadBtn = document.getElementById("upload-btn");
+const processBtn = document.getElementById("process-btn");
+const exportBtn = document.getElementById("export-btn");
+const clearBtn = document.getElementById("clear-btn");
 const sceneList = document.getElementById("scene-list");
 const sceneCount = document.getElementById("scene-count");
-const patternPreview = document.getElementById("pattern-preview");
 const jsonOutput = document.getElementById("json-output");
 
-const state = {
-  baseName: "story_3",
-  scenes: [],
-};
+let convertedScenes = [];
 
-function safeBaseName(value) {
-  const trimmedValue = value.trim();
-  return trimmedValue || "scene";
+// Trích xuất tên file sạch từ blob url
+function cleanFileName(blobUrl) {
+  if (!blobUrl) return "unknown.jpg";
+  // Xóa phần "blob:null/" hoặc bất kỳ prefix blob url nào nếu có, chỉ lấy GUID
+  const cleanStr = blobUrl.replace(/^blob:[^/]+\//, "");
+  return `${cleanStr}.jpg`;
 }
 
-function normalizeSceneContent(value) {
-  return value.replace(/\r\n/g, "\n").trim();
-}
+// Xử lý chuyển đổi cấu trúc dữ liệu
+function convertJson(sourceData) {
+  let frames = [];
 
-function buildSceneFileName(baseName, sceneNumber) {
-  return `${baseName} (${sceneNumber}).png`;
-}
-
-function updatePatternPreview() {
-  const baseName = safeBaseName(sceneNameInput.value);
-  const sceneNumber = state.scenes.length + 1;
-  patternPreview.textContent = `${buildSceneFileName(baseName, sceneNumber)}`;
-}
-
-function buildJsonPayload() {
-  return {
-    baseName: safeBaseName(sceneNameInput.value),
-    scenes: state.scenes.map((scene) => ({
-      scene: scene.scene,
-      fileName: scene.fileName,
-      content: scene.content,
-    })),
-  };
-}
-
-function createSceneRow(scene) {
-  const row = document.createElement("div");
-  row.className = "neu-btn p-3 text-sm";
-
-  const topRow = document.createElement("div");
-  topRow.className = "flex items-center justify-between gap-3 mb-3";
-
-  const leftBlock = document.createElement("div");
-  leftBlock.className = "flex items-center gap-3 min-w-0";
-
-  const indexBadge = document.createElement("span");
-  indexBadge.className =
-    "w-8 h-8 rounded-full bg-zinc-800 text-red-500 flex items-center justify-center font-bold";
-  indexBadge.textContent = scene.scene;
-
-  const fileNameText = document.createElement("span");
-  fileNameText.className = "text-gray-300 truncate";
-  fileNameText.textContent = scene.fileName;
-
-  leftBlock.appendChild(indexBadge);
-  leftBlock.appendChild(fileNameText);
-
-  const removeButton = document.createElement("button");
-  removeButton.type = "button";
-  removeButton.className =
-    "neu-btn w-9 h-9 flex items-center justify-center text-gray-400 hover:text-red-500";
-  removeButton.title = "Remove scene";
-  removeButton.innerHTML = '<i class="fa-solid fa-trash"></i>';
-  removeButton.addEventListener("click", () => {
-    removeScene(scene.scene);
-  });
-
-  topRow.appendChild(leftBlock);
-  topRow.appendChild(removeButton);
-
-  const textArea = document.createElement("textarea");
-  textArea.rows = 3;
-  textArea.value = scene.content;
-  textArea.className =
-    "w-full neu-pressed border-0 outline-none px-3 py-2 text-gray-200 placeholder:text-gray-500 resize-none";
-  textArea.placeholder = "Enter scene content here...";
-  textArea.addEventListener("input", (event) => {
-    scene.content = normalizeSceneContent(event.target.value);
-    jsonOutput.textContent = JSON.stringify(buildJsonPayload(), null, 2);
-  });
-
-  row.appendChild(topRow);
-  row.appendChild(textArea);
-  return row;
-}
-
-function renderSceneList() {
-  sceneList.innerHTML = "";
-
-  if (state.scenes.length === 0) {
-    sceneList.innerHTML = `
-      <div class="neu-btn p-4 text-sm text-gray-500 text-center">
-        No scene added yet. Enter a base name, type the scene content, and click the plus button.
-      </div>
-    `;
-    sceneCount.textContent = "0";
-    jsonOutput.textContent = JSON.stringify(buildJsonPayload(), null, 2);
-    updatePatternPreview();
-    return;
+  // Thích ứng linh hoạt nếu JSON truyền vào trực tiếp là mảng hoặc object chứa thuộc tính frames
+  if (Array.isArray(sourceData)) {
+    frames = sourceData;
+  } else if (sourceData && Array.isArray(sourceData.frames)) {
+    frames = sourceData.frames;
+  } else {
+    alert("Invalid JSON format. Couldn't find valid frames list.");
+    return [];
   }
 
-  state.scenes.forEach((scene) => {
-    sceneList.appendChild(createSceneRow(scene));
-  });
-
-  sceneCount.textContent = String(state.scenes.length);
-  jsonOutput.textContent = JSON.stringify(buildJsonPayload(), null, 2);
-  updatePatternPreview();
-}
-
-function addScene() {
-  const baseName = safeBaseName(sceneNameInput.value);
-  const nextSceneNumber = state.scenes.length + 1;
-  const sceneContent = normalizeSceneContent(sceneContentInput.value);
-  const fileName = buildSceneFileName(baseName, nextSceneNumber);
-
-  if (!sceneContent) {
-    sceneContentInput.focus();
-    return;
-  }
-
-  state.scenes.push({
-    scene: nextSceneNumber,
-    fileName,
-    content: sceneContent,
-  });
-
-  sceneContentInput.value = "";
-  renderSceneList();
-  sceneContentInput.focus();
-}
-
-function removeScene(sceneNumber) {
-  const updatedScenes = state.scenes
-    .filter((scene) => scene.scene !== sceneNumber)
-    .map((scene, index) => ({
+  // Map sang định dạng mới rút gọn, đánh số tự động từ 1 trở đi
+  return frames.map((frame, index) => {
+    const firstImgBlob =
+      frame.imageHistory && frame.imageHistory.length > 0
+        ? frame.imageHistory[0]
+        : "";
+    return {
       scene: index + 1,
-      fileName: buildSceneFileName(
-        safeBaseName(sceneNameInput.value),
-        index + 1,
-      ),
-      content: scene.content || "",
-    }));
-
-  state.scenes = updatedScenes;
-  renderSceneList();
+      fileName: cleanFileName(firstImgBlob),
+      content: frame.visualDescription || "",
+    };
+  });
 }
 
-function clearScenes() {
-  state.scenes = [];
-  renderSceneList();
+// Render hiển thị lên giao diện HTML
+function renderScenes() {
+  sceneList.innerHTML = "";
+  sceneCount.textContent = convertedScenes.length;
+  jsonOutput.textContent = JSON.stringify(convertedScenes, null, 2);
+
+  if (convertedScenes.length === 0) {
+    sceneList.innerHTML = `<div class="text-sm text-gray-500 italic p-2">No converted data template available.</div>`;
+    return;
+  }
+
+  convertedScenes.forEach((item) => {
+    const card = document.createElement("div");
+    card.className =
+      "neu-btn p-3 rounded-xl flex flex-col gap-1 text-left text-xs text-gray-300 pointer-events-none";
+    card.innerHTML = `
+      <div class="flex justify-between items-center border-b border-zinc-800 pb-1 mb-1">
+        <span class="font-bold text-red-500">Scene #${item.scene}</span>
+        <span class="text-zinc-500 font-mono">${item.fileName}</span>
+      </div>
+      <div class="text-gray-400 whitespace-pre-wrap break-words">${item.content || '<span class="italic text-zinc-600">No description</span>'}</div>
+    `;
+    sceneList.appendChild(card);
+  });
 }
 
+// Trigger phân tích dữ liệu đầu vào
+function processData() {
+  const rawText = jsonInput.value.trim();
+  if (!rawText) {
+    alert("Please paste JSON context or select file first.");
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(rawText);
+    convertedScenes = convertJson(parsed);
+    renderScenes();
+  } catch (err) {
+    alert("JSON Syntax Error. Please check your text script format.");
+    console.error(err);
+  }
+}
+
+// Tải file trực tiếp và xử lý ngầm (chống lag cho file to)
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // Hiển thị trạng thái đang xử lý
+  const originalText = processBtn.innerHTML;
+  processBtn.innerHTML =
+    '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+
+  const reader = new FileReader();
+  reader.onload = function (evt) {
+    try {
+      // Parse JSON ngầm trong RAM, KHÔNG in cục text 38MB ra textarea nữa
+      const parsed = JSON.parse(evt.target.result);
+      convertedScenes = convertJson(parsed);
+      renderScenes();
+
+      // Báo thành công gọn gàng
+      jsonInput.value = `[File Loaded]: ${file.name}\n[Size]: ${(file.size / 1024 / 1024).toFixed(2)} MB\n=> Xử lý thành công! Bấm Export để tải về.`;
+    } catch (err) {
+      alert("Lỗi cấu trúc JSON trong file.");
+      console.error(err);
+    } finally {
+      processBtn.innerHTML = originalText; // Trả lại nút cũ
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Download file JSON output
 function downloadJson() {
-  const payload = buildJsonPayload();
-  const jsonString = JSON.stringify(payload, null, 2);
+  if (convertedScenes.length === 0) {
+    alert("No data available to export.");
+    return;
+  }
+  const jsonString = JSON.stringify(convertedScenes, null, 2);
   const blob = new Blob([jsonString], { type: "application/json" });
   const url = URL.createObjectURL(blob);
 
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${safeBaseName(sceneNameInput.value) || "scene"}-export.json`;
+  link.download = "converted-scenes.json";
   document.body.appendChild(link);
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
 }
 
-sceneNameInput.addEventListener("input", () => {
-  updatePatternPreview();
-  if (state.scenes.length > 0) {
-    const baseName = safeBaseName(sceneNameInput.value);
-    state.scenes = state.scenes.map((scene, index) => ({
-      scene: index + 1,
-      fileName: buildSceneFileName(baseName, index + 1),
-      content: scene.content || "",
-    }));
-    renderSceneList();
-  }
-});
+// Clear sạch form
+function clearAll() {
+  jsonInput.value = "";
+  fileInput.value = "";
+  convertedScenes = [];
+  renderScenes();
+}
 
-addSceneButton.addEventListener("click", addScene);
-exportButton.addEventListener("click", downloadJson);
-clearButton.addEventListener("click", clearScenes);
-sceneNameInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    addScene();
-  }
-});
-sceneContentInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-    event.preventDefault();
-    addScene();
-  }
-});
+// Khởi chạy sự kiện cấu hình
+uploadBtn.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", handleFileSelect);
+processBtn.addEventListener("click", processData);
+exportBtn.addEventListener("click", downloadJson);
+clearBtn.addEventListener("click", clearAll);
 
-sceneNameInput.value = state.baseName;
-renderSceneList();
+// Render trống ban đầu
+renderScenes();

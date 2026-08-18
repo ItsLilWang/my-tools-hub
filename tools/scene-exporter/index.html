@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Scene Exporter - My Tools Hub</title>
+    <title>Scene Converter - My Tools Hub</title>
     <link rel="icon" type="image/x-icon" href="../../assets/img/favicon.png" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link
@@ -30,7 +30,7 @@
           <h1
             class="text-xl sm:text-2xl font-extrabold tracking-widest text-red-500 uppercase flex items-center gap-2"
           >
-            <i class="fa-solid fa-images"></i> Scene Exporter
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Scene Converter
           </h1>
         </div>
 
@@ -39,51 +39,33 @@
           class="neu-btn px-4 py-2 text-sm font-semibold text-red-500 flex items-center gap-2"
           type="button"
         >
-          <i class="fa-solid fa-download"></i> Export JSON
+          <i class="fa-solid fa-download"></i> Export Convert JSON
         </button>
       </div>
 
       <div class="neu-pressed p-4 sm:p-6 flex flex-col gap-4">
-        <div class="flex flex-col sm:flex-row gap-3">
-          <div class="flex-1">
-            <label
-              for="scene-name"
-              class="block text-xs uppercase tracking-[0.2em] text-gray-400 mb-2"
-            >
-              Scene Base Name
-            </label>
-            <div class="flex items-center gap-3">
-              <input
-                id="scene-name"
-                type="text"
-                value="story_3"
-                class="w-full neu-btn border-0 outline-none px-4 py-3 text-white placeholder:text-gray-500"
-                placeholder="Enter scene base name"
-              />
-              <button
-                id="add-scene-btn"
-                class="neu-btn w-12 h-12 flex items-center justify-center text-red-500 text-xl"
-                type="button"
-                aria-label="Add new scene"
-              >
-                <i class="fa-solid fa-plus"></i>
-              </button>
-            </div>
-          </div>
+        <div
+          class="flex flex-col sm:flex-row items-center justify-between gap-3"
+        >
+          <label class="block text-xs uppercase tracking-[0.2em] text-gray-400">
+            Paste Scene List JSON or Upload File Below
+          </label>
+          <input id="file-input" type="file" accept=".json" class="hidden" />
+          <button
+            id="upload-btn"
+            class="neu-btn px-3 py-1.5 text-xs text-white uppercase tracking-wider"
+            type="button"
+          >
+            <i class="fa-solid fa-file-import mr-1"></i> Choose File
+          </button>
         </div>
 
         <div class="flex-1">
-          <label
-            for="scene-content"
-            class="block text-xs uppercase tracking-[0.2em] text-gray-400 mb-2"
-          >
-            Scene Content
-          </label>
           <textarea
-            id="scene-content"
-            rows="3"
-            class="w-full neu-btn border-0 outline-none px-4 py-3 text-white placeholder:text-gray-500 resize-none"
-            placeholder="Enter scene content here..."
+            id="json-input"
+            rows="5"
+            class="w-full neu-btn border-0 outline-none px-4 py-3 text-white placeholder:text-gray-500 resize-none font-mono text-xs"
+            placeholder="Paste your source JSON here..."
           ></textarea>
         </div>
 
@@ -91,23 +73,24 @@
           class="flex items-center justify-between gap-3 text-sm text-gray-400"
         >
           <span
-            >Scene count:
+            >Processed scenes:
             <strong id="scene-count" class="text-white">0</strong></span
           >
-          <span
-            >Pattern:
-            <strong id="pattern-preview" class="text-red-500"
-              >story_3 (1).png</strong
-            ></span
+          <button
+            id="process-btn"
+            class="neu-btn px-4 py-2 text-xs font-bold text-red-500 uppercase tracking-wider"
+            type="button"
           >
+            Parse & Convert <i class="fa-solid fa-bolt ml-1"></i>
+          </button>
         </div>
       </div>
 
       <div class="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <div class="neu-pressed p-4 sm:p-5 min-h-[260px]">
+        <div class="neu-pressed p-4 sm:p-5 min-h-[300px]">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-bold uppercase tracking-[0.2em] text-white">
-              Scene List
+              Converted Scene List
             </h2>
             <button
               id="clear-btn"
@@ -117,27 +100,25 @@
               Clear All
             </button>
           </div>
-
-          <div id="scene-list" class="flex flex-col gap-3"></div>
+          <div
+            id="scene-list"
+            class="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-1"
+          ></div>
         </div>
 
-        <div class="neu-pressed p-4 sm:p-5 min-h-[260px] flex flex-col gap-3">
+        <div class="neu-pressed p-4 sm:p-5 min-h-[300px] flex flex-col gap-3">
           <h2 class="text-lg font-bold uppercase tracking-[0.2em] text-white">
             JSON Preview
           </h2>
           <pre
             id="json-output"
-            class="w-full flex-1 overflow-auto rounded-xl bg-zinc-950/60 p-3 text-xs text-gray-300 whitespace-pre-wrap break-words"
+            class="w-full flex-1 overflow-auto rounded-xl bg-zinc-950/60 p-3 text-xs text-gray-300 whitespace-pre-wrap break-words font-mono"
           >
-{
-  "baseName": "story_3",
-  "scenes": []
-}</pre
+[]</pre
           >
         </div>
       </div>
     </div>
-
     <script src="script.js"></script>
   </body>
 </html>
