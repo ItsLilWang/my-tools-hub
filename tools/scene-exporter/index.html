@@ -118,6 +118,97 @@
           >
         </div>
       </div>
+
+      <!-- ===================== STEP 2: MERGE WITH TIMING FILE ===================== -->
+      <div class="neu-pressed p-4 sm:p-6 flex flex-col gap-4 mt-2">
+        <div class="flex items-center justify-between gap-4 pb-1">
+          <h2
+            class="text-lg sm:text-xl font-extrabold tracking-widest text-red-500 uppercase flex items-center gap-2"
+          >
+            <i class="fa-solid fa-clapperboard"></i> Step 2: Merge Timing File
+          </h2>
+          <button
+            id="merge-export-btn"
+            class="neu-btn px-4 py-2 text-sm font-semibold text-red-500 flex items-center gap-2"
+            type="button"
+          >
+            <i class="fa-solid fa-download"></i> Export Final JSON
+          </button>
+        </div>
+
+        <div
+          class="flex flex-col sm:flex-row items-center justify-between gap-3"
+        >
+          <label class="block text-xs uppercase tracking-[0.2em] text-gray-400">
+            Paste Timing JSON (AI-generated: index, srtStart, srtEnd) or Upload
+          </label>
+          <input
+            id="timing-file-input"
+            type="file"
+            accept=".json"
+            class="hidden"
+          />
+          <button
+            id="timing-upload-btn"
+            class="neu-btn px-3 py-1.5 text-xs text-white uppercase tracking-wider"
+            type="button"
+          >
+            <i class="fa-solid fa-file-import mr-1"></i> Choose File
+          </button>
+        </div>
+
+        <div class="flex-1">
+          <textarea
+            id="timing-input"
+            rows="5"
+            class="w-full neu-btn border-0 outline-none px-4 py-3 text-white placeholder:text-gray-500 resize-none font-mono text-xs"
+            placeholder='Paste timing sidecar JSON here, e.g. [{"index":1,"srtStart":"00:00:00,000","srtEnd":"00:00:05,200"}]'
+          ></textarea>
+        </div>
+
+        <div
+          class="flex items-center justify-between gap-3 text-sm text-gray-400"
+        >
+          <span
+            >Matched pairs:
+            <strong id="merge-count" class="text-white">0</strong> /
+            <span id="scene-total-count">0</span></span
+          >
+          <button
+            id="merge-btn"
+            class="neu-btn px-4 py-2 text-xs font-bold text-red-500 uppercase tracking-wider"
+            type="button"
+          >
+            Merge & Generate <i class="fa-solid fa-film ml-1"></i>
+          </button>
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+          <div class="neu-pressed p-4 sm:p-5 min-h-[260px]">
+            <h3
+              class="text-sm font-bold uppercase tracking-[0.2em] text-white mb-3"
+            >
+              Final CapCut Timeline
+            </h3>
+            <div
+              id="final-list"
+              class="flex flex-col gap-2 max-h-[340px] overflow-y-auto pr-1"
+            ></div>
+          </div>
+
+          <div class="neu-pressed p-4 sm:p-5 min-h-[260px] flex flex-col gap-3">
+            <h3 class="text-sm font-bold uppercase tracking-[0.2em] text-white">
+              Final JSON Preview
+            </h3>
+            <pre
+              id="final-output"
+              class="w-full flex-1 overflow-auto rounded-xl bg-zinc-950/60 p-3 text-xs text-gray-300 whitespace-pre-wrap break-words font-mono"
+            >
+[]</pre
+            >
+          </div>
+        </div>
+      </div>
     </div>
     <script src="script.js"></script>
   </body>
