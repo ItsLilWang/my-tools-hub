@@ -34,13 +34,12 @@ function convertJson(sourceData) {
 
   // Map sang định dạng mới rút gọn, đánh số tự động từ 1 trở đi
   return frames.map((frame, index) => {
-    const firstImgBlob =
-      frame.imageHistory && frame.imageHistory.length > 0
-        ? frame.imageHistory[0]
-        : "";
+    // Lấy trực tiếp từ imageUrl, nếu không có thì để chuỗi rỗng
+    const imgBlob = frame.imageUrl || "";
+
     return {
       scene: index + 1,
-      fileName: cleanFileName(firstImgBlob),
+      fileName: cleanFileName(imgBlob),
       content: frame.visualDescription || "",
     };
   });
