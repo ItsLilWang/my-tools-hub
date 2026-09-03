@@ -20,12 +20,12 @@ metadata to generate a CapCut-ready timeline.
 
 - Accepts pasted JSON or uploaded `.json` files containing a frames array.
 - Sorts frames by `sceneNumber` and `shotNumber`, then maps image URLs,
-	descriptions, and motion into numbered scene records.
+  descriptions, and motion into numbered scene records.
 - Previews the converted scene list and exports it as `converted-scenes.json`.
 - Accepts a timing JSON array (or `frames` array) with `index`, `srtStart`, and
-	`srtEnd` values.
+  `srtEnd` values.
 - Matches timing entries to scenes, calculates rounded durations, and preserves
-	an existing `effect` or infers one from the motion description.
+  an existing `effect` or infers one from the motion description.
 - Previews and exports the final timeline as `capcut-final.json`.
 
 ### 3. [Ratio Calculator](./tools/ratio-calculator/index.html)
