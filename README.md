@@ -15,12 +15,18 @@ A lightning-fast font tester designed for creators and UI/UX designers.
 
 ### 2. [Scene Exporter](./tools/scene-exporter/index.html)
 
-Manage a list of scenes and automatically generate numbered filenames for export.
+Convert scene frame data into a compact scene list and combine it with timing
+metadata to generate a CapCut-ready timeline.
 
-- Add scenes with a shared base name.
-- Generates names like `story_3 (13).png` automatically.
-- Tracks the total scene list in real time.
-- Exports the final data as a JSON file.
+- Accepts pasted JSON or uploaded `.json` files containing a frames array.
+- Sorts frames by `sceneNumber` and `shotNumber`, then maps image URLs,
+	descriptions, and motion into numbered scene records.
+- Previews the converted scene list and exports it as `converted-scenes.json`.
+- Accepts a timing JSON array (or `frames` array) with `index`, `srtStart`, and
+	`srtEnd` values.
+- Matches timing entries to scenes, calculates rounded durations, and preserves
+	an existing `effect` or infers one from the motion description.
+- Previews and exports the final timeline as `capcut-final.json`.
 
 ### 3. [Ratio Calculator](./tools/ratio-calculator/index.html)
 

@@ -34,7 +34,7 @@ function cleanFileName(blobUrl) {
   return `${cleanStr}.jpg`;
 }
 
-// Xử lý chuyển đổi cấu trúc dữ liệu
+// Xử lý chuyển đổi cấu trúc dữ liệu và sắp xếp đúng thứ tự sceneNumber, shotNumber
 function convertJson(sourceData) {
   let frames = [];
 
@@ -48,16 +48,27 @@ function convertJson(sourceData) {
     return [];
   }
 
+  // SẮP XẾP TĂNG DẦN THEO SCENE RỒI TỚI SHOT
+  const sortedFrames = [...frames].sort((a, b) => {
+    const sceneA = parseInt(a.sceneNumber || 0, 10);
+    const sceneB = parseInt(b.sceneNumber || 0, 10);
+    if (sceneA !== sceneB) {
+      return sceneA - sceneB;
+    }
+
+    const shotA = parseInt(a.shotNumber || 0, 10);
+    const shotB = parseInt(b.shotNumber || 0, 10);
+    return shotA - shotB;
+  });
+
   // Map sang định dạng mới rút gọn, đánh số tự động từ 1 trở đi
-  return frames.map((frame, index) => {
-    // Lấy trực tiếp từ imageUrl, nếu không có thì để chuỗi rỗng
+  return sortedFrames.map((frame, index) => {
     const imgBlob = frame.imageUrl || "";
 
     return {
       scene: index + 1,
       fileName: cleanFileName(imgBlob),
       content: frame.visualDescription || "",
-      // motion giữ lại để bước 2 chọn effect camera move, không cần đoán ngữ nghĩa lại
       motion: frame.motionDescription || "",
     };
   });
@@ -228,7 +239,9 @@ function pickEffect(motionText) {
   return "slow_zoom_in";
 }
 
-// Merge chính: ghép theo THỨ TỰ VỊ TRÍ (index-based), không suy luận ngữ nghĩa
+// Merge chính: match theo field scene (rút gọn) <-> index (timing file),
+// KHÔNG dựa vào vị trí mảng hay tên file đổi tay — fileName lấy trực tiếp
+// từ chính Converted Scene List (đã sort đúng ở Bước 1).
 function mergeWithTiming(timingData) {
   if (convertedScenes.length === 0) {
     alert("Chưa có Converted Scene List. Hãy Parse & Convert ở Bước 1 trước.");
@@ -242,35 +255,50 @@ function mergeWithTiming(timingData) {
     timingArr = timingData.frames;
   } else {
     alert(
-      "Invalid timing JSON format. Cần một mảng object có srtStart/srtEnd.",
+      "Invalid timing JSON format. Cần một mảng object có index/srtStart/srtEnd.",
     );
     return [];
   }
 
-  if (timingArr.length !== convertedScenes.length) {
-    alert(
-      `Cảnh báo: số lượng lệch nhau — Scene List có ${convertedScenes.length} phần tử, Timing File có ${timingArr.length} phần tử.\n` +
-        `Vẫn merge theo số lượng nhỏ hơn, kiểm tra lại 2 file trước khi export.`,
-    );
+  if (timingArr.length === 0) {
+    alert("Timing JSON rỗng.");
+    return [];
   }
 
-  const n = Math.min(convertedScenes.length, timingArr.length);
+  // Lookup nhanh: scene number -> item rút gọn (đã có fileName đúng)
+  const sceneMap = new Map();
+  convertedScenes.forEach((item) => sceneMap.set(Number(item.scene), item));
+
+  // Sort theo index để đảm bảo đúng thứ tự, không tin thứ tự mảng gốc
+  const sortedTiming = [...timingArr].sort((a, b) => {
+    const iA = parseInt(a.index, 10) || 0;
+    const iB = parseInt(b.index, 10) || 0;
+    return iA - iB;
+  });
+
   const rawDurations = [];
   const partial = [];
+  const missingIndices = [];
 
-  for (let i = 0; i < n; i++) {
-    const scene = convertedScenes[i];
-    const timing = timingArr[i];
+  sortedTiming.forEach((t) => {
+    const idx = parseInt(t.index, 10);
+    const scene = sceneMap.get(idx);
 
-    const start = srtTimeToSeconds(timing.srtStart);
-    const end = srtTimeToSeconds(timing.srtEnd);
+    if (!scene) {
+      // Không tìm thấy scene tương ứng trong Scene List -> bỏ qua, báo cảnh báo sau
+      missingIndices.push(idx);
+      return;
+    }
+
+    const start = srtTimeToSeconds(t.srtStart);
+    const end = srtTimeToSeconds(t.srtEnd);
 
     let dur = 0;
     if (start !== null && end !== null && end > start) {
       dur = end - start;
     } else {
       console.warn(
-        `Timing không hợp lệ tại vị trí ${i + 1} (srtStart/srtEnd), gán tạm 2s.`,
+        `Timing không hợp lệ tại index ${idx} (srtStart/srtEnd), gán tạm 2s.`,
       );
       dur = 2;
     }
@@ -278,8 +306,25 @@ function mergeWithTiming(timingData) {
     rawDurations.push(dur);
     partial.push({
       image: scene.fileName,
-      effect: pickEffect(scene.motion),
+      // Ưu tiên effect AI đã chọn sẵn trong timing file (hiểu ngữ cảnh tốt hơn
+      // keyword-matching). Chỉ fallback rule-based khi thiếu field "effect".
+      effect: t.effect || pickEffect(t.motion || scene.motion),
     });
+  });
+
+  if (missingIndices.length > 0) {
+    alert(
+      `Cảnh báo: ${missingIndices.length} index trong Timing File không khớp scene nào trong Scene List:\n` +
+        missingIndices.slice(0, 15).join(", ") +
+        (missingIndices.length > 15 ? "..." : "") +
+        `\nCác dòng này đã bị bỏ qua, kiểm tra lại field "scene"/"index" ở 2 file.`,
+    );
+  }
+
+  if (sortedTiming.length !== convertedScenes.length) {
+    alert(
+      `Lưu ý: Scene List có ${convertedScenes.length} phần tử, Timing File có ${sortedTiming.length} phần tử. Kiểm tra lại nếu không chủ đích.`,
+    );
   }
 
   // Làm tròn 2 chữ số thập phân, rồi bù lệch cộng dồn vào phần tử cuối

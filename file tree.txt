@@ -23,8 +23,8 @@ my-tools-hub/
 │   │   ├── index.html
 │   │   └── script.js
 │   ├── scene-exporter/
-│   │   ├── index.html
-│   │   └── script.js
+│   │   ├── index.html       # Giao dien chuyen doi scene va ghep timing
+│   │   └── script.js        # Tao converted-scenes.json va capcut-final.json
 │   ├── story-builder/
 │   │   ├── index.html
 │   │   └── script.js
@@ -32,5 +32,5 @@ my-tools-hub/
 │       ├── index.html
 │       └── script.js
 ├── file tree.txt
-├── index.html
+├── home.html
 └── README.md
