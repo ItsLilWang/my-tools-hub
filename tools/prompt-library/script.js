@@ -42,6 +42,7 @@ const samplePrompts = [
     content:
       "Write a warm launch email for a new AI app, highlight the value, invite users to try the beta, and keep the tone energetic.",
     imageUrl: "",
+    copyCount: 0,
   },
   {
     id: crypto.randomUUID(),
@@ -49,6 +50,7 @@ const samplePrompts = [
     content:
       "Summarize the team's progress in a concise executive style. Mention completed work, blockers, and next steps.",
     imageUrl: "",
+    copyCount: 0,
   },
   {
     id: crypto.randomUUID(),
@@ -56,8 +58,18 @@ const samplePrompts = [
     content:
       "Create a polished Instagram caption for a design product launch. Make it short, punchy, and slightly premium.",
     imageUrl: "",
+    copyCount: 0,
   },
 ];
+
+function normalizePrompt(prompt) {
+  return {
+    ...prompt,
+    copyCount: Number.isFinite(Number(prompt.copyCount))
+      ? Math.max(0, Number(prompt.copyCount))
+      : 0,
+  };
+}
 
 function loadPrompts() {
   try {
@@ -70,7 +82,9 @@ function loadPrompts() {
 
     const parsed = JSON.parse(stored);
     prompts =
-      Array.isArray(parsed) && parsed.length > 0 ? parsed : samplePrompts;
+      Array.isArray(parsed) && parsed.length > 0
+        ? parsed.map(normalizePrompt)
+        : samplePrompts;
   } catch (error) {
     console.error("Failed to read prompts from storage", error);
     prompts = samplePrompts;
@@ -153,11 +167,16 @@ function attachLightboxHandlers() {
 
 function renderPrompts() {
   // Thực hiện lọc mảng dựa trên realtime text search
-  const filteredPrompts = prompts.filter(
-    (p) =>
-      p.title.toLowerCase().includes(searchQuery) ||
-      p.content.toLowerCase().includes(searchQuery),
-  );
+  const filteredPrompts = prompts
+    .filter(
+      (p) =>
+        p.title.toLowerCase().includes(searchQuery) ||
+        p.content.toLowerCase().includes(searchQuery),
+    )
+    .sort(
+      (firstPrompt, secondPrompt) =>
+        secondPrompt.copyCount - firstPrompt.copyCount,
+    );
 
   if (!filteredPrompts.length) {
     promptList.innerHTML = `
@@ -197,6 +216,10 @@ function renderPrompts() {
             <div class="flex items-start justify-between gap-2">
               <h3 class="text-lg font-semibold text-white">${safeTitle}</h3>
               <span class="text-xs uppercase text-red-400">Prompt</span>
+            </div>
+            <div data-copy-count class="mt-2 flex items-center gap-2 text-xs text-gray-500">
+              <i class="fa-solid fa-copy"></i>
+              <span>${prompt.copyCount} ${prompt.copyCount === 1 ? "copy" : "copies"}</span>
             </div>
             
             <div class="mt-2 flex-1">
@@ -331,6 +354,14 @@ async function copyPromptContent(id, button) {
 
   try {
     await navigator.clipboard.writeText(prompt.content);
+    prompt.copyCount = (prompt.copyCount || 0) + 1;
+    savePrompts();
+    const countLabel = button
+      .closest("article")
+      ?.querySelector("[data-copy-count] span");
+    if (countLabel) {
+      countLabel.textContent = `${prompt.copyCount} ${prompt.copyCount === 1 ? "copy" : "copies"}`;
+    }
     const original = button.innerHTML;
     button.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
     setTimeout(() => {
@@ -367,7 +398,7 @@ function importBackup(event) {
     try {
       const importedData = JSON.parse(e.target.result);
       if (Array.isArray(importedData)) {
-        prompts = importedData;
+        prompts = importedData.map(normalizePrompt);
         savePrompts();
         renderPrompts();
         alert("Import backup thành công m nha!");
