@@ -121,6 +121,25 @@
             ></i>
           </div>
 
+          <div class="flex items-center gap-2">
+            <button
+              id="sort-mode-btn"
+              class="neu-btn px-4 py-2 text-sm text-gray-300 font-medium flex items-center gap-2"
+              title="Switch sort by newest or copied"
+            >
+              <i class="fa-solid fa-clock-rotate-left"></i>
+              <span id="sort-mode-label">Newest</span>
+            </button>
+            <button
+              id="sort-direction-btn"
+              class="neu-btn px-4 py-2 text-sm text-gray-300 font-medium flex items-center gap-2"
+              title="Reverse sorting direction"
+            >
+              <i class="fa-solid fa-arrow-down-wide-short"></i>
+              <span id="sort-direction-label">Desc</span>
+            </button>
+          </div>
+
           <!-- Backup Controls -->
           <input type="file" id="import-file" class="hidden" accept=".json" />
           <button

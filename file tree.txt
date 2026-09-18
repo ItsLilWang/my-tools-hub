@@ -22,9 +22,6 @@ my-tools-hub/
 │   ├── ratio-calculator/
 │   │   ├── index.html
 │   │   └── script.js
-│   ├── scene-exporter/
-│   │   ├── index.html       # Giao dien chuyen doi scene va ghep timing
-│   │   └── script.js        # Tao converted-scenes.json va capcut-final.json
 │   ├── story-builder/
 │   │   ├── index.html
 │   │   └── script.js

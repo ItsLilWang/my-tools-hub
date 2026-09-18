@@ -29,11 +29,17 @@ const importFile = document.getElementById("import-file");
 
 // Search element
 const searchInput = document.getElementById("search-input");
+const sortModeBtn = document.getElementById("sort-mode-btn");
+const sortModeLabel = document.getElementById("sort-mode-label");
+const sortDirectionBtn = document.getElementById("sort-direction-btn");
+const sortDirectionLabel = document.getElementById("sort-direction-label");
 let searchQuery = "";
 
 let prompts = [];
 let activeMode = "add";
 let editingId = null;
+let sortField = "newest";
+let sortDirection = "desc";
 
 const samplePrompts = [
   {
@@ -43,6 +49,7 @@ const samplePrompts = [
       "Write a warm launch email for a new AI app, highlight the value, invite users to try the beta, and keep the tone energetic.",
     imageUrl: "",
     copyCount: 0,
+    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
   },
   {
     id: crypto.randomUUID(),
@@ -51,6 +58,7 @@ const samplePrompts = [
       "Summarize the team's progress in a concise executive style. Mention completed work, blockers, and next steps.",
     imageUrl: "",
     copyCount: 0,
+    createdAt: Date.now() - 1000 * 60 * 60 * 24,
   },
   {
     id: crypto.randomUUID(),
@@ -59,6 +67,7 @@ const samplePrompts = [
       "Create a polished Instagram caption for a design product launch. Make it short, punchy, and slightly premium.",
     imageUrl: "",
     copyCount: 0,
+    createdAt: Date.now(),
   },
 ];
 
@@ -68,6 +77,9 @@ function normalizePrompt(prompt) {
     copyCount: Number.isFinite(Number(prompt.copyCount))
       ? Math.max(0, Number(prompt.copyCount))
       : 0,
+    createdAt: Number.isFinite(Number(prompt.createdAt))
+      ? Number(prompt.createdAt)
+      : Date.now(),
   };
 }
 
@@ -165,7 +177,27 @@ function attachLightboxHandlers() {
   });
 }
 
+function updateSortControls() {
+  if (sortField === "newest") {
+    sortModeBtn.innerHTML =
+      '<i class="fa-solid fa-clock-rotate-left"></i> Newest';
+  } else {
+    sortModeBtn.innerHTML =
+      '<i class="fa-solid fa-copy"></i> Copied';
+  }
+
+  if (sortDirection === "desc") {
+    sortDirectionBtn.innerHTML =
+      '<i class="fa-solid fa-arrow-down-wide-short"></i> Desc';
+  } else {
+    sortDirectionBtn.innerHTML =
+      '<i class="fa-solid fa-arrow-up-short-wide"></i> Asc';
+  }
+}
+
 function renderPrompts() {
+  updateSortControls();
+
   // Thực hiện lọc mảng dựa trên realtime text search
   const filteredPrompts = prompts
     .filter(
@@ -173,10 +205,15 @@ function renderPrompts() {
         p.title.toLowerCase().includes(searchQuery) ||
         p.content.toLowerCase().includes(searchQuery),
     )
-    .sort(
-      (firstPrompt, secondPrompt) =>
-        secondPrompt.copyCount - firstPrompt.copyCount,
-    );
+    .sort((firstPrompt, secondPrompt) => {
+      const factor = sortDirection === "desc" ? 1 : -1;
+
+      if (sortField === "newest") {
+        return factor * (secondPrompt.createdAt - firstPrompt.createdAt);
+      }
+
+      return factor * (secondPrompt.copyCount - firstPrompt.copyCount);
+    });
 
   if (!filteredPrompts.length) {
     promptList.innerHTML = `
@@ -337,10 +374,19 @@ function handleSubmit(event) {
 
   if (activeMode === "edit" && editingId) {
     prompts = prompts.map((item) =>
-      item.id === editingId ? { ...item, title, content, imageUrl } : item,
+      item.id === editingId
+        ? { ...item, title, content, imageUrl, createdAt: item.createdAt || Date.now() }
+        : item,
     );
   } else {
-    prompts.unshift({ id: crypto.randomUUID(), title, content, imageUrl });
+    prompts.unshift({
+      id: crypto.randomUUID(),
+      title,
+      content,
+      imageUrl,
+      copyCount: 0,
+      createdAt: Date.now(),
+    });
   }
 
   savePrompts();
@@ -356,12 +402,8 @@ async function copyPromptContent(id, button) {
     await navigator.clipboard.writeText(prompt.content);
     prompt.copyCount = (prompt.copyCount || 0) + 1;
     savePrompts();
-    const countLabel = button
-      .closest("article")
-      ?.querySelector("[data-copy-count] span");
-    if (countLabel) {
-      countLabel.textContent = `${prompt.copyCount} ${prompt.copyCount === 1 ? "copy" : "copies"}`;
-    }
+    renderPrompts();
+
     const original = button.innerHTML;
     button.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
     setTimeout(() => {
@@ -416,6 +458,16 @@ function importBackup(event) {
 // Bắt sự kiện Realtime Search
 searchInput.addEventListener("input", (e) => {
   searchQuery = e.target.value.toLowerCase();
+  renderPrompts();
+});
+
+sortModeBtn.addEventListener("click", () => {
+  sortField = sortField === "newest" ? "copied" : "newest";
+  renderPrompts();
+});
+
+sortDirectionBtn.addEventListener("click", () => {
+  sortDirection = sortDirection === "desc" ? "asc" : "desc";
   renderPrompts();
 });
 

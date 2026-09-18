@@ -13,22 +13,7 @@ A lightning-fast font tester designed for creators and UI/UX designers.
 - Neumorphic controls for font size, weight, and ratio testing.
 - Export font combinations easily.
 
-### 2. [Scene Exporter](./tools/scene-exporter/index.html)
-
-Convert scene frame data into a compact scene list and combine it with timing
-metadata to generate a CapCut-ready timeline.
-
-- Accepts pasted JSON or uploaded `.json` files containing a frames array.
-- Sorts frames by `sceneNumber` and `shotNumber`, then maps image URLs,
-  descriptions, and motion into numbered scene records.
-- Previews the converted scene list and exports it as `converted-scenes.json`.
-- Accepts a timing JSON array (or `frames` array) with `index`, `srtStart`, and
-  `srtEnd` values.
-- Matches timing entries to scenes, calculates rounded durations, and preserves
-  an existing `effect` or infers one from the motion description.
-- Previews and exports the final timeline as `capcut-final.json`.
-
-### 3. [Ratio Calculator](./tools/ratio-calculator/index.html)
+### 2. [Ratio Calculator](./tools/ratio-calculator/index.html)
 
 Quickly calculate missing values for A:B = C:D ratios. Perfect for resizing and scaling.
 
@@ -37,7 +22,7 @@ Quickly calculate missing values for A:B = C:D ratios. Perfect for resizing and 
 - Smart error handling (prevents division by zero).
 - Clean Neumorphic input fields and result highlight.
 
-### 4. [Case Converter](./tools/case-converter/index.html)
+### 3. [Case Converter](./tools/case-converter/index.html)
 
 Convert any text between common casing styles in one click.
 
@@ -46,7 +31,7 @@ Convert any text between common casing styles in one click.
 - Live re-conversion as you type, with char/word counter.
 - One-click Copy button with instant feedback.
 
-### 5. [URL Extractor](./tools/url-extractor/index.html)
+### 4. [URL Extractor](./tools/url-extractor/index.html)
 
 Extract every URL from plain text in seconds.
 
@@ -55,7 +40,7 @@ Extract every URL from plain text in seconds.
 - Optional deduplication toggle with live extraction as you type.
 - Copy all results in one click.
 
-### 6. [Password Generator](./tools/password-generator/index.html)
+### 5. [Password Generator](./tools/password-generator/index.html)
 
 Create strong random passwords with full control over length and character types.
 
@@ -64,7 +49,7 @@ Create strong random passwords with full control over length and character types
 - Uses `crypto.getRandomValues` for secure randomness.
 - Strength estimate, show/hide toggle, and one-click copy.
 
-### 7. [Prompt Library](./tools/prompt-library/index.html)
+### 6. [Prompt Library](./tools/prompt-library/index.html)
 
 Collect and manage creative prompts in a small personal library.
 
@@ -72,7 +57,7 @@ Collect and manage creative prompts in a small personal library.
 - Add, edit, and delete prompt entries.
 - Designed for quick reuse and inspiration.
 
-### 8. [Story Builder](./tools/story-builder/index.html)
+### 7. [Story Builder](./tools/story-builder/index.html)
 
 Create structured story briefs and AI prompts for short fiction.
 
