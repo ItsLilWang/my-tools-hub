@@ -38,7 +38,7 @@
       </div>
 
       <div class="app-shell">
-        <aside class="sidebar">
+        <aside class="sidebar" tabindex="0">
           <div class="sidebar-brand">
             <div class="logo"></div>
             <div>
@@ -52,7 +52,7 @@
             <button data-scroll="plot">Plot</button>
             <button data-scroll="emotion">Emotion</button>
             <button data-scroll="ai-prompt">AI Prompt</button>
-            <button data-scroll="export-section">Export</button>
+            <button data-scroll="export-section">Copy Brief</button>
           </nav>
         </aside>
 
@@ -392,43 +392,25 @@
 
           <section class="panel" id="ai-prompt" data-collapsible>
             <div class="panel-header">
-              <h3>AI Prompt</h3>
-              <button class="collapse-toggle">Collapse</button>
+              <h3>AI Prompt <span class="live-badge">● Live</span></h3>
+              <div class="panel-controls">
+                <button id="copyPrompt" class="secondary">Copy Prompt</button>
+                <button class="collapse-toggle">Collapse</button>
+              </div>
             </div>
             <div class="panel-body">
+              <p class="hint">Prompt tự cập nhật khi m gõ ở các ô phía trên.</p>
               <label><textarea id="promptOutput" readonly></textarea></label>
-              <div class="ai-actions">
-                <button id="btnGenerate">Generate Prompt</button>
-              </div>
             </div>
           </section>
 
-          <section
-            class="panel export-panel"
-            id="export-section"
-            data-collapsible
-          >
-            <div class="panel-header">
-              <h3>Export</h3>
-              <button class="collapse-toggle">Collapse</button>
-            </div>
-            <div class="panel-body export-body">
-              <div class="export-grid">
-                <button id="exportTxt">Export TXT</button>
-                <button id="exportMd">Export Markdown</button>
-                <button id="exportJson">Export JSON</button>
-                <button id="copyPrompt" class="secondary">Copy Prompt</button>
-                <button id="copyBrief" class="secondary">Copy Brief</button>
-                <button id="importJson" class="secondary">Import JSON</button>
-                <button id="importTxt" class="secondary">Import TXT</button>
-                <button id="btnClearConfirm" class="danger">Clear All</button>
-              </div>
-              <input
-                type="file"
-                id="fileInput"
-                accept="application/json,text/plain"
-                hidden
-              />
+          <section class="panel" id="export-section">
+            <div class="panel-body copy-bar">
+              <p class="hint">
+                Copy toàn bộ brief theo mẫu (Story Brief → Characters → Plot →
+                Emotional Beats).
+              </p>
+              <button id="copyBrief">Copy Brief</button>
             </div>
           </section>
         </main>
