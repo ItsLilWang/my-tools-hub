@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Read Aloud - My Tools Hub</title>
+    <link rel="icon" type="image/x-icon" href="../../assets/img/favicon.png" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Shared Neumorphism DNA -->
+    <link rel="stylesheet" href="../../assets/css/neumorphism.css" />
+
+    <style>
+      /* Tự định nghĩa .hidden, không phụ thuộc Tailwind CDN load kịp hay không */
+      .hidden {
+        display: none !important;
+      }
+      /* Đoạn văn trong Reader: chữ to, giãn dòng rộng để Edge ngắt giọng tốt */
+      #reader-content p {
+        margin-bottom: 1.5em;
+      }
+      /* Ghi đè size mặc định của slider/select trong neumorphism.css */
+      .full-range {
+        width: 100% !important;
+      }
+      .wide-select {
+        max-width: 100% !important;
+      }
+    </style>
+  </head>
+  <body
+    class="min-h-screen flex items-center justify-center p-3 sm:p-6 font-sans antialiased bg-zinc-900"
+  >
+    <!-- =========================================
+         APP CHÍNH (header + 2 tab)
+         ========================================= -->
+    <div
+      id="app"
+      class="neu-flat w-full max-w-3xl p-4 sm:p-8 flex flex-col gap-4 sm:gap-6"
+    >
+      <!-- Header & Navigation -->
+      <div class="flex items-center gap-4 pb-2">
+        <a
+          href="../../index.html"
+          class="neu-btn w-10 h-10 flex items-center justify-center text-gray-500 hover:text-red-500 transition"
+          title="Back to Hub"
+        >
+          <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <h1
+          class="text-xl sm:text-2xl font-extrabold tracking-widest text-red-500 uppercase flex items-center gap-2"
+        >
+          <i class="fa-solid fa-headphones"></i> Read Aloud
+        </h1>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex gap-3">
+        <button
+          data-tab="reader"
+          class="tab-btn neu-btn neu-active px-4 py-2 text-sm text-gray-300 font-semibold flex items-center gap-2"
+        >
+          <i class="fa-solid fa-book-open-reader"></i> Reader
+        </button>
+        <button
+          data-tab="learn"
+          class="tab-btn neu-btn px-4 py-2 text-sm text-gray-300 font-semibold flex items-center gap-2"
+        >
+          <i class="fa-solid fa-language"></i> Learn EN
+        </button>
+      </div>
+
+      <!-- ===== TAB 1: READER ===== -->
+      <section id="tab-reader" class="flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <label
+            for="raw-text"
+            class="text-xs font-bold text-gray-500 uppercase tracking-wider"
+          >
+            Input Text
+          </label>
+          <span id="reader-count" class="text-xs text-gray-500">0 words</span>
+        </div>
+        <textarea
+          id="raw-text"
+          class="neu-pressed w-full min-h-[280px] p-4 text-white bg-transparent outline-none resize-y placeholder-gray-600"
+          placeholder="Dán nội dung vào đây rồi bấm Render..."
+        ></textarea>
+        <div class="flex justify-end">
+          <button
+            id="render-btn"
+            class="neu-btn px-6 py-2.5 text-sm text-red-500 font-bold flex items-center gap-2"
+          >
+            <i class="fa-solid fa-play"></i> Render
+          </button>
+        </div>
+      </section>
+
+      <!-- ===== TAB 2: LEARN EN ===== -->
+      <section id="tab-learn" class="hidden flex flex-col gap-4">
+        <!-- Input tiếng Việt -->
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <label
+              for="vi-text"
+              class="text-xs font-bold text-gray-500 uppercase tracking-wider"
+            >
+              Tiếng Việt
+            </label>
+            <span class="text-xs text-gray-600">Ctrl + Enter để dịch</span>
+          </div>
+          <textarea
+            id="vi-text"
+            class="neu-pressed w-full min-h-[110px] p-4 text-white bg-transparent outline-none resize-y placeholder-gray-600"
+            placeholder="Gõ câu tiếng Việt, ví dụ: Hôm nay t mệt quá nhưng vẫn phải làm cho xong..."
+          ></textarea>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <label
+            class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer select-none"
+          >
+            <input id="auto-speak" type="checkbox" class="accent-red-500" checked />
+            Dịch xong tự đọc
+          </label>
+          <button
+            id="translate-btn"
+            class="neu-btn px-6 py-2.5 text-sm text-red-500 font-bold flex items-center gap-2"
+          >
+            <i class="fa-solid fa-language"></i>
+            <span id="translate-label">Dịch</span>
+          </button>
+        </div>
+
+        <!-- Output tiếng Anh -->
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+              English
+              <span id="engine-tag" class="ml-2 normal-case font-normal text-gray-600"></span>
+            </span>
+            <div class="flex gap-2">
+              <button
+                id="speak-btn"
+                class="neu-btn px-4 py-1.5 text-xs text-gray-300 font-semibold flex items-center gap-2"
+              >
+                <i class="fa-solid fa-volume-high"></i> Đọc
+              </button>
+              <button
+                id="stop-btn"
+                class="neu-btn px-4 py-1.5 text-xs text-gray-300 font-semibold flex items-center gap-2"
+              >
+                <i class="fa-solid fa-stop"></i> Dừng
+              </button>
+              <button
+                id="copy-btn"
+                class="neu-btn px-4 py-1.5 text-xs text-gray-300 font-semibold flex items-center gap-2"
+              >
+                <i class="fa-regular fa-copy"></i>
+                <span id="copy-label">Copy</span>
+              </button>
+            </div>
+          </div>
+          <div
+            id="en-text"
+            class="neu-pressed w-full min-h-[90px] p-4 text-red-500 text-lg leading-relaxed"
+          >
+            <span class="text-gray-600 text-base">Bản dịch sẽ hiện ở đây...</span>
+          </div>
+        </div>
+
+        <!-- Cài đặt giọng đọc -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="flex flex-col gap-2">
+            <label
+              for="voice-select"
+              class="text-xs font-bold text-gray-500 uppercase tracking-wider"
+            >
+              Giọng đọc
+            </label>
+            <div class="neu-pressed px-4 py-2.5">
+              <select id="voice-select" class="wide-select w-full outline-none text-sm">
+                <option>Đang tải giọng...</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <label
+              for="rate-range"
+              class="text-xs font-bold text-gray-500 uppercase tracking-wider"
+            >
+              Tốc độ: <span id="rate-value" class="text-red-500">1.0x</span>
+            </label>
+            <div class="neu-pressed px-4 py-4 flex items-center">
+              <input
+                id="rate-range"
+                type="range"
+                min="0.5"
+                max="1.5"
+                step="0.1"
+                value="1"
+                class="full-range"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Lịch sử -->
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+              Lịch sử gần đây
+            </span>
+            <button
+              id="clear-history-btn"
+              class="text-xs text-gray-600 hover:text-red-500 transition"
+            >
+              <i class="fa-solid fa-trash-can"></i> Xoá hết
+            </button>
+          </div>
+          <ul id="history-list" class="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1"></ul>
+        </div>
+      </section>
+    </div>
+
+    <!-- =========================================
+         READER VIEW (chỉ có nội dung, không chữ thừa)
+         ========================================= -->
+    <main
+      id="reader-view"
+      class="hidden neu-flat w-full max-w-3xl p-6 sm:p-10"
+    >
+      <div
+        id="reader-content"
+        class="text-xl leading-loose text-gray-200"
+      ></div>
+    </main>
+
+    <!-- Nút quay lại: chỉ có icon, Edge không có chữ để đọc -->
+    <button
+      id="exit-reader-btn"
+      class="hidden fixed top-4 right-4 neu-btn w-11 h-11 flex items-center justify-center text-gray-500 hover:text-red-500"
+      aria-hidden="true"
+      tabindex="-1"
+    >
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -65,6 +65,15 @@ Create structured story briefs and AI prompts for short fiction.
 - Generate an AI-ready prompt and export brief as TXT/MD/JSON.
 - Uses the shared Dark Neumorphism theme for consistent UI.
 
+### 8. [Read Aloud](./tools/read-aloud/index.html)
+
+Distraction-free reader for TTS plus a Vietnamese → English practice mode.
+
+- Reader mode shows only your text, so Edge Read Aloud skips UI labels.
+- Translate Vietnamese to English (Google, auto-fallback to MyMemory).
+- Speak with browser voices (Edge Natural voices preferred), adjustable speed.
+- Recent translation history, click to replay.
+
 _(More tools coming soon...)_
 
 ## 🎨 UI/UX DNA: Dark Neumorphism
