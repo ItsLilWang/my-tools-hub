@@ -21,7 +21,7 @@ let activeCase = null;
 function toSentenceCase(text) {
   const lower = text.toLowerCase();
   // Capitalize the first letter after start of string or after . ! ?
-  return lower.replace(/(^\s*\w|[.!?]\s*\w)/g, (match) => match.toUpperCase());
+  return lower.replace(/(^\s*\p{L}|[.!?]\s*\p{L})/gu, (match) => match.toUpperCase());
 }
 
 function toLowerCase(text) {
@@ -33,7 +33,7 @@ function toUpperCase(text) {
 }
 
 function toCapitalizedCase(text) {
-  return text.replace(/\w\S*/g, (word) => {
+  return text.replace(/\p{L}\S*/gu, (word) => {
     return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
   });
 }

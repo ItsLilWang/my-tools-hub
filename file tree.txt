@@ -22,12 +22,16 @@ my-tools-hub/
 │   ├── ratio-calculator/
 │   │   ├── index.html
 │   │   └── script.js
-│   ├── story-builder/
+│   ├── read-aloud/
 │   │   ├── index.html
 │   │   └── script.js
+│   ├── story-builder/
+│   │   ├── index.html
+│   │   ├── script.js
+│   │   └── style.css
 │   └── url-extractor/
 │       ├── index.html
 │       └── script.js
 ├── file tree.txt
-├── home.html
+├── index.html
 └── README.md

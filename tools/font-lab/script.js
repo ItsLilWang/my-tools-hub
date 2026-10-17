@@ -132,9 +132,10 @@ const DEFAULTS = {
   "text-2-input": { font: "Inter", size: "24px", weight: "400" },
 };
 
-function buildFontUrl(fontName) {
+function buildFontUrl(fontName, allWeights = true) {
   const urlName = fontName.trim().replace(/\s+/g, "+");
-  return `https://fonts.googleapis.com/css2?family=${urlName}:wght@100;200;300;400;500;600;700;800;900&display=swap`;
+  const weights = allWeights ? ":wght@100;200;300;400;500;600;700;800;900" : "";
+  return `https://fonts.googleapis.com/css2?family=${urlName}${weights}&display=swap`;
 }
 
 // Load a specific font from Google Fonts, verify if it exists.
@@ -143,9 +144,11 @@ async function ensureFontLoaded(fontName) {
   if (!key) return false;
   if (loadedFonts.has(key)) return true;
 
-  const url = buildFontUrl(key);
   try {
-    const res = await fetch(url, { mode: "cors" });
+    // Font chỉ có 1-2 độ đậm (vd Bebas Neue) sẽ bị Google từ chối khi xin đủ 100-900
+    // -> thử lại không kèm độ đậm
+    let res = await fetch(buildFontUrl(key), { mode: "cors" });
+    if (!res.ok) res = await fetch(buildFontUrl(key, false), { mode: "cors" });
     if (!res.ok) return false;
     const css = await res.text();
     if (!css.includes("@font-face") && !css.includes("font-family")) {

@@ -53,16 +53,16 @@ Create strong random passwords with full control over length and character types
 
 Collect and manage creative prompts in a small personal library.
 
-- Browse prompt cards with preview details.
-- Add, edit, and delete prompt entries.
-- Designed for quick reuse and inspiration.
+- Browse prompt cards with preview images, tags, and pins.
+- Add, edit, duplicate, and delete prompt entries.
+- Export/import JSON backups (merge or replace).
 
 ### 7. [Story Builder](./tools/story-builder/index.html)
 
 Create structured story briefs and AI prompts for short fiction.
 
 - Build character cards, plot beats, and emotional arcs.
-- Generate an AI-ready prompt and export brief as TXT/MD/JSON.
+- Live AI-ready prompt, one-click Copy Prompt / Copy Brief.
 - Uses the shared Dark Neumorphism theme for consistent UI.
 
 ### 8. [Read Aloud](./tools/read-aloud/index.html)
@@ -88,10 +88,10 @@ This hub uses a shared design language across all tools:
 
 To maintain the design consistency, a Master Template is provided.
 
-1. Copy the folder `template/`.
-2. Rename it to your new tool's name (e.g., `tools/new-tool/`).
-3. The `index.html` is already linked to the global `assets/css/neumorphism.css`.
-4. Add your logic to `script.js` and link the tool in the main root `index.html`.
+1. Copy the folder `template/` into `tools/` and rename it (e.g., `tools/new-tool/`).
+2. Rename `index-template.html` to `index.html` (paths are already set for `tools/<name>/`).
+3. Create `script.js`, then uncomment the `<script src="script.js">` line.
+4. Add a card for the tool in the root `index.html`.
 
 ## 💻 Tech Stack
 

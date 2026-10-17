@@ -356,14 +356,14 @@ function renderCard(prompt) {
   return `
     <article class="neu-pressed p-4 flex flex-col h-full gap-3 ${prompt.pinned ? "card-pinned" : ""}">
       <div class="preview-frame rounded-2xl shrink-0" title="Click to enlarge">
-        <img src="${previewSrc}" alt="Preview for ${safeTitle}" loading="lazy" onerror="this.onerror=null;this.src='${fallbackSrc}'" />
+        <img src="${escapeHtml(previewSrc)}" alt="Preview for ${safeTitle}" loading="lazy" onerror="this.onerror=null;this.src='${fallbackSrc}'" />
         <div class="zoom-badge"><i class="fa-solid fa-magnifying-glass-plus"></i> Click to enlarge</div>
       </div>
 
       <div class="flex-1 flex flex-col">
         <div class="flex items-start justify-between gap-2">
           <h3 class="text-lg font-semibold text-white">${safeTitle}</h3>
-          <button data-action="pin" data-id="${prompt.id}" class="pin-btn ${prompt.pinned ? "pinned" : ""} text-lg shrink-0" title="${prompt.pinned ? "Bỏ ghim" : "Ghim lên đầu"}">
+          <button data-action="pin" data-id="${escapeHtml(prompt.id)}" class="pin-btn ${prompt.pinned ? "pinned" : ""} text-lg shrink-0" title="${prompt.pinned ? "Bỏ ghim" : "Ghim lên đầu"}">
             <i class="fa-${prompt.pinned ? "solid" : "regular"} fa-star"></i>
           </button>
         </div>
@@ -382,16 +382,16 @@ function renderCard(prompt) {
       </div>
 
       <div class="flex gap-2 shrink-0 mt-2">
-        <button data-action="copy" data-id="${prompt.id}" class="neu-btn flex-[2] px-3 py-2 text-sm text-emerald-400 font-bold">
+        <button data-action="copy" data-id="${escapeHtml(prompt.id)}" class="neu-btn flex-[2] px-3 py-2 text-sm text-emerald-400 font-bold">
           <i class="fa-solid fa-copy"></i> Copy
         </button>
-        <button data-action="edit" data-id="${prompt.id}" class="neu-btn flex-1 px-3 py-2 text-sm text-gray-300" title="Edit">
+        <button data-action="edit" data-id="${escapeHtml(prompt.id)}" class="neu-btn flex-1 px-3 py-2 text-sm text-gray-300" title="Edit">
           <i class="fa-solid fa-pen-to-square"></i>
         </button>
-        <button data-action="duplicate" data-id="${prompt.id}" class="neu-btn flex-1 px-3 py-2 text-sm text-sky-400" title="Nhân bản">
+        <button data-action="duplicate" data-id="${escapeHtml(prompt.id)}" class="neu-btn flex-1 px-3 py-2 text-sm text-sky-400" title="Nhân bản">
           <i class="fa-solid fa-clone"></i>
         </button>
-        <button data-action="delete" data-id="${prompt.id}" class="neu-btn flex-1 px-3 py-2 text-sm text-red-400" title="Delete">
+        <button data-action="delete" data-id="${escapeHtml(prompt.id)}" class="neu-btn flex-1 px-3 py-2 text-sm text-red-400" title="Delete">
           <i class="fa-solid fa-trash"></i>
         </button>
       </div>
