@@ -63,7 +63,49 @@
           inset 3px 3px 6px #0a0a0b,
           inset -3px -3px 6px #26262b;
       }
-      /* ===== Luyện nhại ===== */
+      /* ===== Tooltip ===== */
+      .tip {
+        position: relative;
+        display: inline-flex;
+        color: #52525b;
+        cursor: help;
+        outline: none;
+        text-transform: none;
+        letter-spacing: normal;
+      }
+      .tip:hover,
+      .tip:focus {
+        color: #ef4444;
+      }
+      .tip-box {
+        position: absolute;
+        left: 0;
+        bottom: calc(100% + 10px);
+        width: 260px;
+        padding: 0.75rem 0.9rem;
+        border-radius: 0.75rem;
+        background: #18181b;
+        color: #d4d4d8;
+        font-size: 0.75rem;
+        font-weight: 400;
+        line-height: 1.5;
+        box-shadow:
+          6px 6px 14px #0a0a0b,
+          -6px -6px 14px #26262b;
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(4px);
+        transition: all 0.15s ease;
+        z-index: 20;
+      }
+      .tip:hover .tip-box,
+      .tip:focus .tip-box {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+      }
+      /* ===== Mimic ===== */
       .seg-btn {
         min-width: 2.25rem;
         padding: 0.25rem 0.5rem;
@@ -334,11 +376,11 @@
           ></div>
         </div>
 
-        <!-- ===== LUYỆN NHẠI (Shadowing) ===== -->
+        <!-- ===== MIMIC (Shadowing) ===== -->
         <div id="shadow-box" class="flex flex-col gap-3">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">
-              Luyện nhại
+              Mimic
             </span>
             <div class="flex flex-wrap items-center gap-4 text-xs text-gray-500">
               <div class="flex items-center gap-2">
@@ -423,8 +465,20 @@
         <!-- Lịch sử: đặt trong "giếng" neu-pressed có padding để bóng item không bị cắt -->
         <div class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
               Lịch sử gần đây
+              <!-- Tooltip: hover (máy tính) hoặc chạm (điện thoại) để xem -->
+              <span class="tip" tabindex="0" aria-label="Thông tin về lịch sử">
+                <i class="fa-solid fa-circle-info"></i>
+                <span class="tip-box" role="tooltip">
+                  Lịch sử chỉ lưu trong trình duyệt trên máy này, không gửi
+                  lên đâu cả. Máy khác hay trình duyệt khác sẽ không thấy.
+                  <br /><br />
+                  • Bấm 1 câu để nghe lại<br />
+                  • Giữ tối đa 30 câu gần nhất<br />
+                  • Bấm "Xoá hết" để dọn sạch
+                </span>
+              </span>
             </span>
             <button
               id="clear-history-btn"
