@@ -180,6 +180,7 @@ function showOutPlaceholder() {
   span.textContent = DIRECTIONS[dir].outPlaceholder;
   DOM.outText.appendChild(span);
   DOM.engineTag.textContent = "";
+  renderShadow();
 }
 
 function applyDirection() {
@@ -257,6 +258,7 @@ async function translate(text, sl, tl) {
 function showOutput(text, engine) {
   DOM.outText.textContent = text;
   DOM.engineTag.textContent = engine ? `· via ${engine}` : "";
+  renderShadow();
 }
 
 // Lấy bản dịch đang hiển thị (bỏ qua chữ gợi ý xám)
@@ -297,6 +299,7 @@ async function handleTranslate() {
     DOM.outText.innerHTML =
       '<span data-placeholder="1" class="text-gray-500 text-base">Dịch không được, check mạng rồi thử lại nha.</span>';
     DOM.engineTag.textContent = "";
+    renderShadow();
   } finally {
     DOM.translateBtn.disabled = false;
     DOM.translateLabel.textContent = "Dịch";
@@ -316,6 +319,7 @@ DOM.srcText.addEventListener("keydown", (e) => {
 // Nút xoá nhanh: xoá cả câu gõ lẫn bản dịch, dừng đọc, focus lại để gõ tiếp
 DOM.learnClearBtn.addEventListener("click", () => {
   DOM.srcText.value = "";
+  stopShadow();
   speechSynthesis.cancel();
   showOutPlaceholder();
   DOM.srcText.focus();
@@ -378,22 +382,46 @@ DOM.rateRange.addEventListener("input", () => {
   store.set("ra_rate", Number(DOM.rateRange.value));
 });
 
-// Hàm đọc chính (luôn đọc tiếng Anh)
+// Đọc 1 đoạn tiếng Anh, trả về Promise -> chờ được tới khi đọc xong.
+// Có "lưới an toàn" hẹn giờ: lỡ trình duyệt không báo đọc xong thì vẫn chạy tiếp
+function speakRaw(text) {
+  return new Promise((resolve) => {
+    if (!text) return resolve();
+    speechSynthesis.cancel(); // dừng câu đang đọc dở (nếu có)
+
+    const u = new SpeechSynthesisUtterance(text);
+    const voice = englishVoices[DOM.voiceSelect.value];
+    if (voice) u.voice = voice;
+    u.lang = voice ? voice.lang : "en-US";
+    u.rate = Number(DOM.rateRange.value);
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(safety);
+      resolve();
+    };
+    const words = text.split(/\s+/).length;
+    const safety = setTimeout(finish, (words * 700) / u.rate + 4000);
+    u.onend = finish;
+    u.onerror = finish;
+
+    speechSynthesis.speak(u);
+  });
+}
+
+// Đọc thường (nút Đọc, lịch sử...): tắt Shadowing nếu đang chạy
 function speak(text) {
-  if (!text) return;
-  speechSynthesis.cancel(); // dừng câu đang đọc dở (nếu có)
-
-  const u = new SpeechSynthesisUtterance(text);
-  const voice = englishVoices[DOM.voiceSelect.value];
-  if (voice) u.voice = voice;
-  u.lang = voice ? voice.lang : "en-US";
-  u.rate = Number(DOM.rateRange.value);
-
-  speechSynthesis.speak(u);
+  stopShadow();
+  speakRaw(text);
 }
 
 DOM.speakBtn.addEventListener("click", () => speak(currentEnglish()));
-DOM.stopBtn.addEventListener("click", () => speechSynthesis.cancel());
+DOM.stopBtn.addEventListener("click", () => {
+  stopShadow();
+  speechSynthesis.cancel();
+});
 
 DOM.copyBtn.addEventListener("click", async () => {
   const out = currentOutput();
@@ -473,6 +501,368 @@ DOM.clearHistoryBtn.addEventListener("click", () => {
   store.set("ra_history", historyItems);
   renderHistory();
 });
+
+
+/* =========================================
+   TAB 2: LUYỆN NHẠI (SHADOWING)
+   A. Tách câu thành cụm ngắn
+   B. Đọc từng cụm -> nghỉ cho m nhại -> cụm tiếp
+   C. Bấm vào từ -> xem IPA
+   ========================================= */
+
+// ---------- A. Tách cụm ----------
+// Từ nối: cắt TRƯỚC những từ này khi cụm quá dài
+const CONNECTORS = new Set([
+  "and", "but", "or", "so", "because", "when", "while", "if", "that",
+  "which", "who", "where", "although", "though", "after", "before",
+  "until", "since", "than", "unless", "whether", "then",
+]);
+// Giới từ: chỉ cắt trước chúng khi cụm đã khá dài (tránh tách "have / to")
+const PREPOSITIONS = new Set([
+  "for", "over", "with", "in", "on", "at", "from", "about", "into",
+  "during", "through", "without", "between", "under", "across", "around",
+]);
+const MIN_WORDS = 3; // cụm ngắn nhất
+const MAX_WORDS = 7; // dài hơn thì tìm chỗ cắt
+
+// Cắt 1 đoạn (không còn dấu câu) thành các cụm vừa miệng
+function splitLongPiece(piece) {
+  const words = piece.split(/\s+/).filter(Boolean);
+  if (words.length <= MAX_WORDS) return [piece];
+
+  const out = [];
+  let current = [];
+  words.forEach((word, i) => {
+    const bare = word.toLowerCase().replace(/[^a-z']/g, "");
+    const left = words.length - i; // số từ còn lại tính cả từ này
+    const atConnector = current.length >= MIN_WORDS && CONNECTORS.has(bare);
+    const atPreposition = current.length >= MAX_WORDS - 2 && PREPOSITIONS.has(bare);
+    const tooLong = current.length >= MAX_WORDS + 3;
+    // Cắt trước từ nối / giới từ, hoặc cắt cưỡng bức nếu quá dài (miễn phần sau không quá cụt)
+    if ((atConnector || atPreposition || tooLong) && left >= 2) {
+      out.push(current.join(" "));
+      current = [];
+    }
+    current.push(word);
+  });
+  if (current.length) out.push(current.join(" "));
+  return out;
+}
+
+function splitChunks(text) {
+  const chunks = [];
+  // 1. Tách câu theo . ! ?
+  const sentences = text.split(/(?<=[.!?…])\s+/).filter((t) => t.trim());
+  sentences.forEach((sentence) => {
+    // 2. Tách tiếp theo dấu phẩy, chấm phẩy, hai chấm, gạch ngang (giữ dấu lại)
+    const pieces = sentence.split(/(?<=[,;:—–])\s+|\s+(?=[—–]\s)/).filter((t) => t.trim());
+    // 3. Cụm nào vẫn dài thì cắt ở từ nối
+    pieces.forEach((piece) => chunks.push(...splitLongPiece(piece.trim())));
+  });
+
+  // Gộp cụm quá cụt (1-2 từ) vào cụm trước cho tự nhiên
+  const merged = [];
+  chunks.forEach((c) => {
+    const n = c.split(/\s+/).length;
+    const prev = merged[merged.length - 1];
+    if (prev && n < 2 && !/[.!?…]$/.test(prev)) {
+      merged[merged.length - 1] = `${prev} ${c}`;
+    } else {
+      merged.push(c);
+    }
+  });
+  return merged;
+}
+
+// ---------- Vẽ danh sách cụm ----------
+let chunks = [];
+
+const SHADOW_EL = {
+  btn: $("shadow-btn"),
+  icon: $("shadow-icon"),
+  label: $("shadow-label"),
+  status: $("shadow-status"),
+  statusText: $("shadow-status-text"),
+  bar: $("turn-bar"),
+  list: $("chunk-list"),
+  ipa: $("ipa-box"),
+};
+
+function renderShadow() {
+  stopShadow();
+  const english = currentEnglish();
+  chunks = english ? splitChunks(english) : [];
+  SHADOW_EL.list.innerHTML = "";
+
+  if (!chunks.length) {
+    SHADOW_EL.list.innerHTML =
+      '<p class="text-sm text-gray-600 px-1">Dịch 1 câu là câu tiếng Anh sẽ được chia cụm ở đây để m nhại theo.</p>';
+    SHADOW_EL.btn.disabled = true;
+    SHADOW_EL.btn.classList.add("opacity-50");
+    return;
+  }
+  SHADOW_EL.btn.disabled = false;
+  SHADOW_EL.btn.classList.remove("opacity-50");
+
+  chunks.forEach((chunk, index) => {
+    const row = document.createElement("div");
+    row.className = "chunk";
+    row.dataset.index = index;
+
+    const play = document.createElement("button");
+    play.className = "chunk-play neu-btn";
+    play.title = "Đọc cụm này";
+    play.innerHTML = '<i class="fa-solid fa-play"></i>';
+    play.addEventListener("click", () => {
+      speak(chunk);
+      highlightChunk(index);
+    });
+
+    const text = document.createElement("div");
+    text.className = "chunk-text";
+    // Mỗi từ là 1 span bấm được để xem IPA
+    chunk.split(/\s+/).forEach((token, i) => {
+      if (i) text.appendChild(document.createTextNode(" "));
+      const span = document.createElement("span");
+      span.className = "word";
+      span.textContent = token;
+      span.addEventListener("click", () => pickWord(span, token));
+      text.appendChild(span);
+    });
+
+    row.append(play, text);
+    SHADOW_EL.list.appendChild(row);
+  });
+}
+
+function highlightChunk(index) {
+  SHADOW_EL.list.querySelectorAll(".chunk").forEach((row) =>
+    row.classList.toggle("is-active", Number(row.dataset.index) === index)
+  );
+}
+
+// ---------- Nút chọn Lặp / Nghỉ ----------
+const shadowSettings = {
+  repeat: store.get("ra_repeat", 1),
+  pause: store.get("ra_pause", 1.5),
+};
+
+document.querySelectorAll("[data-seg]").forEach((group) => {
+  const key = group.dataset.seg;
+  const buttons = group.querySelectorAll(".seg-btn");
+  const paint = () =>
+    buttons.forEach((b) =>
+      b.classList.toggle("neu-active", Number(b.dataset.value) === shadowSettings[key])
+    );
+  buttons.forEach((b) =>
+    b.addEventListener("click", () => {
+      shadowSettings[key] = Number(b.dataset.value);
+      store.set(`ra_${key}`, shadowSettings[key]);
+      paint();
+    })
+  );
+  paint();
+});
+
+// ---------- B. Chạy Shadowing ----------
+// runId: mỗi lần bấm Start tăng lên; vòng lặp cũ thấy runId đổi thì tự dừng
+let runId = 0;
+let shadowRunning = false;
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function setStatus(text, mode) {
+  SHADOW_EL.status.classList.toggle("hidden", !text);
+  SHADOW_EL.statusText.textContent = text || "";
+  SHADOW_EL.statusText.className =
+    "whitespace-nowrap " + (mode === "you" ? "text-red-500 font-bold" : "text-gray-400");
+}
+
+// Thanh đỏ chạy hết trong `ms` mili-giây (thời gian m nhại)
+function runTurnBar(ms) {
+  const bar = SHADOW_EL.bar;
+  bar.style.transition = "none";
+  bar.style.width = "0%";
+  void bar.offsetWidth; // ép trình duyệt vẽ lại trước khi chạy animation
+  bar.style.transition = `width ${ms}ms linear`;
+  bar.style.width = "100%";
+}
+
+function resetTurnBar() {
+  SHADOW_EL.bar.style.transition = "none";
+  SHADOW_EL.bar.style.width = "0%";
+}
+
+function paintShadowButton() {
+  SHADOW_EL.icon.className = shadowRunning
+    ? "fa-solid fa-stop"
+    : "fa-solid fa-microphone-lines";
+  SHADOW_EL.label.textContent = shadowRunning ? "Dừng" : "Shadowing";
+}
+
+function stopShadow() {
+  if (!shadowRunning) return;
+  runId++;
+  shadowRunning = false;
+  speechSynthesis.cancel();
+  setStatus("");
+  resetTurnBar();
+  highlightChunk(-1);
+  paintShadowButton();
+}
+
+async function startShadow() {
+  if (!chunks.length) return;
+  const myRun = ++runId;
+  shadowRunning = true;
+  paintShadowButton();
+  const alive = () => myRun === runId;
+
+  for (let i = 0; i < chunks.length && alive(); i++) {
+    for (let rep = 1; rep <= shadowSettings.repeat && alive(); rep++) {
+      highlightChunk(i);
+      const tag = `Cụm ${i + 1}/${chunks.length}` +
+        (shadowSettings.repeat > 1 ? ` · lần ${rep}/${shadowSettings.repeat}` : "");
+
+      // 1. Nghe
+      setStatus(`🔊 Nghe · ${tag}`, "listen");
+      resetTurnBar();
+      const t0 = performance.now();
+      await speakRaw(chunks[i]);
+      if (!alive()) return;
+
+      // 2. Đến lượt m: nghỉ bằng thời gian vừa đọc x hệ số, tối thiểu 1.2s
+      const turn = Math.max(1200, (performance.now() - t0) * shadowSettings.pause);
+      setStatus(`🎤 Đến lượt m · ${tag}`, "you");
+      runTurnBar(turn);
+      await sleep(turn);
+    }
+  }
+
+  if (alive()) {
+    shadowRunning = false;
+    paintShadowButton();
+    resetTurnBar();
+    highlightChunk(-1);
+    setStatus("✅ Xong 1 lượt! Bấm Shadowing để luyện lại.", "listen");
+  }
+}
+
+SHADOW_EL.btn.addEventListener("click", () => {
+  if (shadowRunning) stopShadow();
+  else startShadow();
+});
+
+// ---------- C. Bấm từ -> xem IPA ----------
+// Free Dictionary API (miễn phí, không cần key). Lưu cache để bấm lại không tải nữa
+const ipaCache = new Map();
+
+// Thử thêm dạng gốc cho từ chia đuôi: finished -> finish, tries -> try...
+function wordVariants(word) {
+  const v = [word];
+  const add = (x) => x.length > 1 && !v.includes(x) && v.push(x);
+  if (word.endsWith("ies")) add(word.slice(0, -3) + "y");
+  if (word.endsWith("es")) add(word.slice(0, -2));
+  if (word.endsWith("s")) add(word.slice(0, -1));
+  if (word.endsWith("ied")) add(word.slice(0, -3) + "y");
+  if (word.endsWith("ed")) { add(word.slice(0, -2)); add(word.slice(0, -1)); }
+  if (word.endsWith("ing")) { add(word.slice(0, -3)); add(word.slice(0, -3) + "e"); }
+  if (word.endsWith("'s")) add(word.slice(0, -2));
+  return v.slice(0, 4); // tối đa 4 lần thử
+}
+
+async function fetchEntry(word) {
+  const res = await fetch(
+    "https://api.dictionaryapi.dev/api/v2/entries/en/" + encodeURIComponent(word)
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  return Array.isArray(data) && data.length ? data[0] : null;
+}
+
+// Rút IPA + loại từ + nghĩa đầu tiên. Ưu tiên phiên âm giọng Mỹ (-us)
+function parseEntry(entry, base) {
+  const phonetics = (entry.phonetics || []).filter((p) => p.text);
+  const us = phonetics.find((p) => /-us\.mp3$/.test(p.audio || ""));
+  const ipa = (us || phonetics[0] || {}).text || entry.phonetic || "";
+  const meaning = (entry.meanings || [])[0] || {};
+  const def = ((meaning.definitions || [])[0] || {}).definition || "";
+  return { base, ipa, pos: meaning.partOfSpeech || "", def };
+}
+
+async function lookupWord(word) {
+  if (ipaCache.has(word)) return ipaCache.get(word);
+  let result = null;
+  for (const v of wordVariants(word)) {
+    const entry = await fetchEntry(v);
+    if (entry) {
+      result = parseEntry(entry, v);
+      break;
+    }
+  }
+  ipaCache.set(word, result);
+  return result;
+}
+
+function showIpa(word, info) {
+  const box = SHADOW_EL.ipa;
+  box.innerHTML = "";
+  box.className = "neu-pressed px-4 py-3 text-sm flex flex-col gap-1";
+
+  const top = document.createElement("div");
+  top.className = "flex flex-wrap items-baseline gap-x-3 gap-y-1";
+
+  const w = document.createElement("span");
+  w.className = "text-lg font-bold text-white";
+  w.textContent = word;
+  top.appendChild(w);
+
+  if (info && info.ipa) {
+    const ipa = document.createElement("span");
+    ipa.className = "text-lg text-red-500 font-mono";
+    ipa.textContent = info.ipa;
+    top.appendChild(ipa);
+  }
+
+  const play = document.createElement("button");
+  play.className = "neu-btn px-3 py-1 text-xs text-gray-300";
+  play.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+  play.title = "Đọc từ này";
+  play.addEventListener("click", () => speak(word));
+  top.appendChild(play);
+  box.appendChild(top);
+
+  const sub = document.createElement("span");
+  sub.className = "text-xs text-gray-500";
+  if (!info) {
+    sub.textContent = "Chưa có IPA cho từ này (từ hiếm, tên riêng hoặc từ viết tắt).";
+  } else {
+    const parts = [];
+    if (info.base !== word) parts.push(`dạng gốc: ${info.base}`);
+    if (info.pos) parts.push(info.pos);
+    if (info.def) parts.push(info.def);
+    sub.textContent = parts.join(" · ");
+  }
+  box.appendChild(sub);
+}
+
+async function pickWord(span, token) {
+  const word = token.toLowerCase().replace(/[’]/g, "'").replace(/^[^a-z']+|[^a-z']+$/g, "");
+  if (!word) return;
+
+  SHADOW_EL.list.querySelectorAll(".word.is-picked").forEach((el) => el.classList.remove("is-picked"));
+  span.classList.add("is-picked");
+  speak(word);
+
+  SHADOW_EL.ipa.className = "neu-pressed px-4 py-3 text-sm text-gray-500";
+  SHADOW_EL.ipa.textContent = `Đang tra "${word}"...`;
+  try {
+    showIpa(word, await lookupWord(word));
+  } catch (err) {
+    console.error(err);
+    SHADOW_EL.ipa.textContent = "Tra từ không được, check mạng rồi thử lại nha.";
+  }
+}
 
 // ---------- Khởi động ----------
 applyDirection();

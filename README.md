@@ -72,6 +72,8 @@ Distraction-free reader for TTS plus a Vietnamese → English practice mode.
 - Reader mode shows only your text, so Edge Read Aloud skips UI labels.
 - Translate Vietnamese ⇄ English with a flag switch (Google, auto-fallback to MyMemory).
 - Quick clear buttons, so no more Ctrl+A → Delete.
+- Shadowing practice: English split into short chunks, listen → your turn → next, with repeat and pause controls.
+- Click any word to see its IPA, part of speech and a short definition.
 - Speak with browser voices (Edge Natural voices preferred), adjustable speed.
 - Recent translation history, click to replay.
 
