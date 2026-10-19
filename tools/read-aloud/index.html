@@ -32,6 +32,41 @@
       .wide-select {
         max-width: 100% !important;
       }
+      /* Cờ trong công tắc chiều dịch */
+      .flag {
+        width: 24px;
+        height: 16px;
+        border-radius: 3px;
+        flex-shrink: 0;
+      }
+      /* Đảo thứ tự cờ khi dịch EN -> VI (mũi tên vẫn ở giữa, vẫn chỉ sang phải) */
+      .dir-inner.is-reversed {
+        flex-direction: row-reverse;
+      }
+      /* Vùng cuộn lịch sử: padding chừa chỗ cho bóng đổ */
+      .history-scroll {
+        max-height: 18rem;
+        overflow-y: auto;
+        padding: 10px 12px 12px 10px;
+      }
+      /* Item lịch sử: bóng nhỏ hơn neu-btn để không đè lên nhau */
+      .history-item {
+        background: #18181b;
+        border-radius: 0.75rem;
+        box-shadow:
+          3px 3px 7px #0a0a0b,
+          -3px -3px 7px #26262b;
+        transition: all 0.15s ease;
+      }
+      .history-item:hover {
+        box-shadow:
+          inset 3px 3px 6px #0a0a0b,
+          inset -3px -3px 6px #26262b;
+      }
+      .history-item.is-playing .fa-play,
+      .history-item:hover .fa-play {
+        color: #ef4444;
+      }
     </style>
   </head>
   <body
@@ -85,7 +120,16 @@
           >
             Input Text
           </label>
-          <span id="reader-count" class="text-xs text-gray-500">0 words</span>
+          <div class="flex items-center gap-3">
+            <span id="reader-count" class="text-xs text-gray-500">0 words</span>
+            <button
+              id="reader-clear-btn"
+              class="clear-btn text-xs text-gray-500 hover:text-red-500 transition flex items-center gap-1"
+              title="Xoá nhanh"
+            >
+              <i class="fa-solid fa-eraser"></i> Xoá
+            </button>
+          </div>
         </div>
         <textarea
           id="raw-text"
@@ -104,21 +148,69 @@
 
       <!-- ===== TAB 2: LEARN EN ===== -->
       <section id="tab-learn" class="hidden flex flex-col gap-4">
-        <!-- Input tiếng Việt -->
+        <!-- Công tắc chiều dịch: cờ bằng SVG vì Windows không hiện emoji cờ -->
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <button
+            id="dir-btn"
+            class="neu-btn px-4 py-2.5 text-sm text-gray-200 font-semibold"
+            title="Đổi chiều dịch"
+          >
+            <span id="dir-inner" class="dir-inner flex items-center gap-3">
+              <span class="flex items-center gap-2">
+                <svg class="flag" viewBox="0 0 30 20" aria-hidden="true">
+                  <rect width="30" height="20" fill="#da251d" />
+                  <polygon
+                    fill="#ffff00"
+                    points="15.00,4.50 16.41,8.56 20.71,8.65 17.28,11.24 18.53,15.35 15.00,12.90 11.47,15.35 12.72,11.24 9.29,8.65 13.59,8.56"
+                  />
+                </svg>
+                VI
+              </span>
+              <i class="fa-solid fa-arrow-right text-red-500 text-xs"></i>
+              <span class="flex items-center gap-2">
+                <svg class="flag" viewBox="0 0 60 30" aria-hidden="true">
+                  <clipPath id="uk-clip">
+                    <path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z" />
+                  </clipPath>
+                  <rect width="60" height="30" fill="#012169" />
+                  <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6" />
+                  <path
+                    d="M0,0 L60,30 M60,0 L0,30"
+                    clip-path="url(#uk-clip)"
+                    stroke="#C8102E"
+                    stroke-width="4"
+                  />
+                  <path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10" />
+                  <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" stroke-width="6" />
+                </svg>
+                EN
+              </span>
+            </span>
+          </button>
+          <span class="text-xs text-gray-600">Ctrl + Enter để dịch</span>
+        </div>
+
+        <!-- Input -->
         <div class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
             <label
-              for="vi-text"
+              id="src-label"
+              for="src-text"
               class="text-xs font-bold text-gray-500 uppercase tracking-wider"
             >
               Tiếng Việt
             </label>
-            <span class="text-xs text-gray-600">Ctrl + Enter để dịch</span>
+            <button
+              id="learn-clear-btn"
+              class="clear-btn text-xs text-gray-500 hover:text-red-500 transition flex items-center gap-1"
+              title="Xoá nhanh"
+            >
+              <i class="fa-solid fa-eraser"></i> Xoá
+            </button>
           </div>
           <textarea
-            id="vi-text"
+            id="src-text"
             class="neu-pressed w-full min-h-[110px] p-4 text-white bg-transparent outline-none resize-y placeholder-gray-600"
-            placeholder="Gõ câu tiếng Việt, ví dụ: Hôm nay t mệt quá nhưng vẫn phải làm cho xong..."
           ></textarea>
         </div>
 
@@ -138,19 +230,20 @@
           </button>
         </div>
 
-        <!-- Output tiếng Anh -->
+        <!-- Output -->
         <div class="flex flex-col gap-2">
-          <div class="flex items-center justify-between">
+          <div class="flex flex-wrap items-center justify-between gap-2">
             <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">
-              English
+              <span id="out-label">English</span>
               <span id="engine-tag" class="ml-2 normal-case font-normal text-gray-600"></span>
             </span>
             <div class="flex gap-2">
               <button
                 id="speak-btn"
                 class="neu-btn px-4 py-1.5 text-xs text-gray-300 font-semibold flex items-center gap-2"
+                title="Đọc câu tiếng Anh"
               >
-                <i class="fa-solid fa-volume-high"></i> Đọc
+                <i class="fa-solid fa-volume-high"></i> Đọc EN
               </button>
               <button
                 id="stop-btn"
@@ -168,11 +261,9 @@
             </div>
           </div>
           <div
-            id="en-text"
+            id="out-text"
             class="neu-pressed w-full min-h-[90px] p-4 text-red-500 text-lg leading-relaxed"
-          >
-            <span class="text-gray-600 text-base">Bản dịch sẽ hiện ở đây...</span>
-          </div>
+          ></div>
         </div>
 
         <!-- Cài đặt giọng đọc -->
@@ -211,7 +302,7 @@
           </div>
         </div>
 
-        <!-- Lịch sử -->
+        <!-- Lịch sử: đặt trong "giếng" neu-pressed có padding để bóng item không bị cắt -->
         <div class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">
@@ -224,7 +315,9 @@
               <i class="fa-solid fa-trash-can"></i> Xoá hết
             </button>
           </div>
-          <ul id="history-list" class="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1"></ul>
+          <div class="neu-pressed p-2">
+            <ul id="history-list" class="history-scroll flex flex-col gap-3"></ul>
+          </div>
         </div>
       </section>
     </div>

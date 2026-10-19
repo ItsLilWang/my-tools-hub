@@ -1,7 +1,7 @@
 /* =========================================
    READ ALOUD TOOL
    - Tab Reader: dán text -> hiện bản sạch cho Edge Read Aloud
-   - Tab Learn EN: gõ tiếng Việt -> dịch tiếng Anh -> đọc to
+   - Tab Learn EN: dịch VI <-> EN, luôn đọc to phần tiếng Anh
    ========================================= */
 
 // ---------- 1. Lấy các element trên trang ----------
@@ -16,17 +16,23 @@ const DOM = {
   // Reader
   rawText: $("raw-text"),
   readerCount: $("reader-count"),
+  readerClearBtn: $("reader-clear-btn"),
   renderBtn: $("render-btn"),
   readerView: $("reader-view"),
   readerContent: $("reader-content"),
   exitReaderBtn: $("exit-reader-btn"),
 
   // Learn
-  viText: $("vi-text"),
+  dirBtn: $("dir-btn"),
+  dirInner: $("dir-inner"),
+  srcLabel: $("src-label"),
+  srcText: $("src-text"),
+  learnClearBtn: $("learn-clear-btn"),
   autoSpeak: $("auto-speak"),
   translateBtn: $("translate-btn"),
   translateLabel: $("translate-label"),
-  enText: $("en-text"),
+  outLabel: $("out-label"),
+  outText: $("out-text"),
   engineTag: $("engine-tag"),
   speakBtn: $("speak-btn"),
   stopBtn: $("stop-btn"),
@@ -123,6 +129,13 @@ DOM.rawText.addEventListener("input", updateReaderCount);
 DOM.renderBtn.addEventListener("click", openReader);
 DOM.exitReaderBtn.addEventListener("click", closeReader);
 
+// Nút xoá nhanh ô Reader
+DOM.readerClearBtn.addEventListener("click", () => {
+  DOM.rawText.value = "";
+  updateReaderCount();
+  DOM.rawText.focus();
+});
+
 // Phím Esc cũng thoát Reader
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !DOM.readerView.classList.contains("hidden")) {
@@ -131,14 +144,82 @@ document.addEventListener("keydown", (e) => {
 });
 
 /* =========================================
+   TAB 2: LEARN EN — CHIỀU DỊCH
+   ========================================= */
+
+// Mỗi chiều dịch có: ngôn ngữ nguồn/đích + chữ hiển thị
+const DIRECTIONS = {
+  "vi-en": {
+    sl: "vi",
+    tl: "en",
+    srcLabel: "Tiếng Việt",
+    outLabel: "English",
+    placeholder:
+      "Gõ câu tiếng Việt, ví dụ: Hôm nay t mệt quá nhưng vẫn phải làm cho xong...",
+    outPlaceholder: "Bản dịch tiếng Anh sẽ hiện ở đây...",
+  },
+  "en-vi": {
+    sl: "en",
+    tl: "vi",
+    srcLabel: "English",
+    outLabel: "Tiếng Việt",
+    placeholder: "Type an English sentence, e.g. I'm exhausted but I still have to finish this...",
+    outPlaceholder: "Bản dịch tiếng Việt sẽ hiện ở đây...",
+  },
+};
+
+let dir = store.get("ra_dir", "vi-en");
+if (!DIRECTIONS[dir]) dir = "vi-en";
+
+// Hiện chữ xám gợi ý trong khung kết quả khi chưa có bản dịch
+function showOutPlaceholder() {
+  DOM.outText.innerHTML = "";
+  const span = document.createElement("span");
+  span.className = "text-gray-600 text-base";
+  span.dataset.placeholder = "1";
+  span.textContent = DIRECTIONS[dir].outPlaceholder;
+  DOM.outText.appendChild(span);
+  DOM.engineTag.textContent = "";
+}
+
+function applyDirection() {
+  const d = DIRECTIONS[dir];
+  DOM.dirInner.classList.toggle("is-reversed", dir === "en-vi");
+  DOM.srcLabel.textContent = d.srcLabel;
+  DOM.outLabel.textContent = d.outLabel;
+  DOM.srcText.placeholder = d.placeholder;
+  DOM.srcText.lang = d.sl; // giúp trình duyệt kiểm tra chính tả đúng ngôn ngữ
+}
+
+function setDirection(newDir) {
+  dir = newDir;
+  store.set("ra_dir", dir);
+  applyDirection();
+}
+
+// Bấm công tắc: đổi chiều. Nếu đã có bản dịch thì đảo luôn 2 bên cho tiện
+DOM.dirBtn.addEventListener("click", () => {
+  const src = DOM.srcText.value.trim();
+  const out = currentOutput();
+  setDirection(dir === "vi-en" ? "en-vi" : "vi-en");
+
+  if (src && out) {
+    DOM.srcText.value = out;
+    showOutput(src, "");
+  } else {
+    showOutPlaceholder();
+  }
+});
+
+/* =========================================
    TAB 2: LEARN EN — DỊCH
    ========================================= */
 
 // Engine chính: Google Translate (endpoint không chính thức, dịch tự nhiên)
-async function translateGoogle(text) {
+async function translateGoogle(text, sl, tl) {
   const url =
     "https://translate.googleapis.com/translate_a/single" +
-    "?client=gtx&sl=vi&tl=en&dt=t&q=" +
+    `?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=` +
     encodeURIComponent(text);
 
   const res = await fetch(url);
@@ -150,9 +231,9 @@ async function translateGoogle(text) {
 }
 
 // Engine dự phòng: MyMemory (chính thức, có giới hạn mỗi ngày)
-async function translateMyMemory(text) {
+async function translateMyMemory(text, sl, tl) {
   const url =
-    "https://api.mymemory.translated.net/get?langpair=vi|en&q=" +
+    `https://api.mymemory.translated.net/get?langpair=${sl}|${tl}&q=` +
     encodeURIComponent(text);
 
   const res = await fetch(url);
@@ -164,39 +245,57 @@ async function translateMyMemory(text) {
 }
 
 // Thử Google trước, hỏng thì chuyển MyMemory
-async function translate(text) {
+async function translate(text, sl, tl) {
   try {
-    return { en: await translateGoogle(text), engine: "Google" };
+    return { out: await translateGoogle(text, sl, tl), engine: "Google" };
   } catch (err) {
     console.warn("Google fail, chuyển MyMemory:", err);
-    return { en: await translateMyMemory(text), engine: "MyMemory" };
+    return { out: await translateMyMemory(text, sl, tl), engine: "MyMemory" };
   }
 }
 
-function showEnglish(en, engine) {
-  DOM.enText.textContent = en;
+function showOutput(text, engine) {
+  DOM.outText.textContent = text;
   DOM.engineTag.textContent = engine ? `· via ${engine}` : "";
 }
 
+// Lấy bản dịch đang hiển thị (bỏ qua chữ gợi ý xám)
+function currentOutput() {
+  return DOM.outText.querySelector("[data-placeholder]")
+    ? ""
+    : DOM.outText.textContent.trim();
+}
+
+// Câu tiếng Anh để đọc: VI->EN thì là bản dịch, EN->VI thì là câu m gõ
+function currentEnglish() {
+  return dir === "vi-en" ? currentOutput() : DOM.srcText.value.trim();
+}
+
 async function handleTranslate() {
-  const vi = DOM.viText.value.trim();
-  if (!vi) {
-    DOM.viText.focus();
+  const src = DOM.srcText.value.trim();
+  if (!src) {
+    DOM.srcText.focus();
     return;
   }
 
+  const { sl, tl } = DIRECTIONS[dir];
   DOM.translateBtn.disabled = true;
   DOM.translateLabel.textContent = "Đang dịch...";
 
   try {
-    const { en, engine } = await translate(vi);
-    showEnglish(en, engine);
-    addHistory(vi, en);
+    const { out, engine } = await translate(src, sl, tl);
+    showOutput(out, engine);
+
+    // Lịch sử luôn lưu theo cặp vi/en, kèm chiều dịch
+    const vi = dir === "vi-en" ? src : out;
+    const en = dir === "vi-en" ? out : src;
+    addHistory({ vi, en, dir });
+
     if (DOM.autoSpeak.checked) speak(en);
   } catch (err) {
     console.error(err);
-    DOM.enText.innerHTML =
-      '<span class="text-gray-500 text-base">Dịch không được, check mạng rồi thử lại nha.</span>';
+    DOM.outText.innerHTML =
+      '<span data-placeholder="1" class="text-gray-500 text-base">Dịch không được, check mạng rồi thử lại nha.</span>';
     DOM.engineTag.textContent = "";
   } finally {
     DOM.translateBtn.disabled = false;
@@ -207,11 +306,19 @@ async function handleTranslate() {
 DOM.translateBtn.addEventListener("click", handleTranslate);
 
 // Ctrl + Enter (hoặc Cmd + Enter trên Mac) để dịch nhanh
-DOM.viText.addEventListener("keydown", (e) => {
+DOM.srcText.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
     handleTranslate();
   }
+});
+
+// Nút xoá nhanh: xoá cả câu gõ lẫn bản dịch, dừng đọc, focus lại để gõ tiếp
+DOM.learnClearBtn.addEventListener("click", () => {
+  DOM.srcText.value = "";
+  speechSynthesis.cancel();
+  showOutPlaceholder();
+  DOM.srcText.focus();
 });
 
 /* =========================================
@@ -271,7 +378,7 @@ DOM.rateRange.addEventListener("input", () => {
   store.set("ra_rate", Number(DOM.rateRange.value));
 });
 
-// Hàm đọc chính
+// Hàm đọc chính (luôn đọc tiếng Anh)
 function speak(text) {
   if (!text) return;
   speechSynthesis.cancel(); // dừng câu đang đọc dở (nếu có)
@@ -285,19 +392,14 @@ function speak(text) {
   speechSynthesis.speak(u);
 }
 
-// Lấy text tiếng Anh đang hiển thị (bỏ qua chữ placeholder xám)
-function currentEnglish() {
-  return DOM.enText.querySelector("span") ? "" : DOM.enText.textContent.trim();
-}
-
 DOM.speakBtn.addEventListener("click", () => speak(currentEnglish()));
 DOM.stopBtn.addEventListener("click", () => speechSynthesis.cancel());
 
 DOM.copyBtn.addEventListener("click", async () => {
-  const en = currentEnglish();
-  if (!en) return;
+  const out = currentOutput();
+  if (!out) return;
   try {
-    await navigator.clipboard.writeText(en);
+    await navigator.clipboard.writeText(out);
     DOM.copyLabel.textContent = "Copied!";
   } catch {
     DOM.copyLabel.textContent = "Lỗi copy";
@@ -312,10 +414,10 @@ DOM.copyBtn.addEventListener("click", async () => {
 const HISTORY_MAX = 30;
 let historyItems = store.get("ra_history", []);
 
-function addHistory(vi, en) {
-  // Xoá bản trùng rồi đẩy câu mới lên đầu
-  historyItems = historyItems.filter((h) => h.vi !== vi);
-  historyItems.unshift({ vi, en });
+function addHistory(item) {
+  // Xoá bản trùng (cùng câu tiếng Anh) rồi đẩy câu mới lên đầu
+  historyItems = historyItems.filter((h) => h.en !== item.en);
+  historyItems.unshift(item);
   historyItems = historyItems.slice(0, HISTORY_MAX);
   store.set("ra_history", historyItems);
   renderHistory();
@@ -326,36 +428,38 @@ function renderHistory() {
 
   if (!historyItems.length) {
     DOM.historyList.innerHTML =
-      '<li class="text-sm text-gray-600">Chưa có câu nào.</li>';
+      '<li class="text-sm text-gray-600 px-2 py-1">Chưa có câu nào.</li>';
     return;
   }
 
   historyItems.forEach((item) => {
     const li = document.createElement("li");
-    li.className =
-      "neu-btn px-4 py-3 cursor-pointer flex items-start gap-3 text-left";
+    li.className = "history-item px-4 py-3 cursor-pointer flex items-start gap-3";
+    li.title = "Bấm để đọc lại";
 
     const icon = document.createElement("i");
-    icon.className = "fa-solid fa-play text-red-500 text-xs mt-1.5";
+    icon.className = "fa-solid fa-play text-gray-500 text-xs mt-1.5 shrink-0";
 
     const textBox = document.createElement("div");
-    textBox.className = "flex flex-col";
+    textBox.className = "flex flex-col gap-0.5 min-w-0";
 
     const enLine = document.createElement("span");
-    enLine.className = "text-sm text-gray-200";
+    enLine.className = "text-sm text-gray-200 break-words";
     enLine.textContent = item.en;
 
     const viLine = document.createElement("span");
-    viLine.className = "text-xs text-gray-500";
+    viLine.className = "text-xs text-gray-500 break-words";
     viLine.textContent = item.vi;
 
     textBox.append(enLine, viLine);
     li.append(icon, textBox);
 
-    // Bấm vào: đưa câu lên khung chính và đọc lại
+    // Bấm vào: đưa câu lên khung chính (đúng chiều dịch cũ) và đọc lại
     li.addEventListener("click", () => {
-      DOM.viText.value = item.vi;
-      showEnglish(item.en, "");
+      const itemDir = DIRECTIONS[item.dir] ? item.dir : "vi-en";
+      setDirection(itemDir);
+      DOM.srcText.value = itemDir === "vi-en" ? item.vi : item.en;
+      showOutput(itemDir === "vi-en" ? item.en : item.vi, "");
       speak(item.en);
     });
 
@@ -371,6 +475,8 @@ DOM.clearHistoryBtn.addEventListener("click", () => {
 });
 
 // ---------- Khởi động ----------
+applyDirection();
+showOutPlaceholder();
 renderHistory();
 updateReaderCount();
 switchTab(store.get("ra_tab", "reader"));
