@@ -754,114 +754,156 @@ SHADOW_EL.btn.addEventListener("click", () => {
 });
 
 // ---------- C. Bấm từ -> xem IPA ----------
-// Free Dictionary API (miễn phí, không cần key). Lưu cache để bấm lại không tải nữa
-const ipaCache = new Map();
+// IPA lấy từ từ điển nhúng sẵn (ipa-dict.js, ~40k từ thông dụng, giọng Mỹ):
+// tra ngay trong máy, không phụ thuộc mạng. Chỉ tải file khi bấm từ lần đầu.
+// Nghĩa của từ thì thử lấy thêm từ Free Dictionary API, lỗi cũng không sao.
+
+let ipaDictPromise = null;
+function loadIpaDict() {
+  if (window.IPA_DICT) return Promise.resolve(window.IPA_DICT);
+  if (!ipaDictPromise) {
+    // Dùng thẻ <script> thay vì fetch -> mở file trực tiếp trên máy (file://) vẫn chạy
+    ipaDictPromise = new Promise((resolve, reject) => {
+      const tag = document.createElement("script");
+      tag.src = "ipa-dict.js";
+      tag.onload = () => resolve(window.IPA_DICT || {});
+      tag.onerror = () => {
+        ipaDictPromise = null; // cho phép thử lại lần sau
+        reject(new Error("Không tải được ipa-dict.js"));
+      };
+      document.head.appendChild(tag);
+    });
+  }
+  return ipaDictPromise;
+}
 
 // Thử thêm dạng gốc cho từ chia đuôi: finished -> finish, tries -> try...
 function wordVariants(word) {
   const v = [word];
   const add = (x) => x.length > 1 && !v.includes(x) && v.push(x);
+  if (word.endsWith("'s")) add(word.slice(0, -2));
   if (word.endsWith("ies")) add(word.slice(0, -3) + "y");
   if (word.endsWith("es")) add(word.slice(0, -2));
   if (word.endsWith("s")) add(word.slice(0, -1));
   if (word.endsWith("ied")) add(word.slice(0, -3) + "y");
   if (word.endsWith("ed")) { add(word.slice(0, -2)); add(word.slice(0, -1)); }
   if (word.endsWith("ing")) { add(word.slice(0, -3)); add(word.slice(0, -3) + "e"); }
-  if (word.endsWith("'s")) add(word.slice(0, -2));
-  return v.slice(0, 4); // tối đa 4 lần thử
+  return v;
 }
 
-async function fetchEntry(word) {
-  const res = await fetch(
-    "https://api.dictionaryapi.dev/api/v2/entries/en/" + encodeURIComponent(word)
-  );
-  if (!res.ok) return null;
-  const data = await res.json();
-  return Array.isArray(data) && data.length ? data[0] : null;
-}
-
-// Rút IPA + loại từ + nghĩa đầu tiên. Ưu tiên phiên âm giọng Mỹ (-us)
-function parseEntry(entry, base) {
-  const phonetics = (entry.phonetics || []).filter((p) => p.text);
-  const us = phonetics.find((p) => /-us\.mp3$/.test(p.audio || ""));
-  const ipa = (us || phonetics[0] || {}).text || entry.phonetic || "";
-  const meaning = (entry.meanings || [])[0] || {};
-  const def = ((meaning.definitions || [])[0] || {}).definition || "";
-  return { base, ipa, pos: meaning.partOfSpeech || "", def };
-}
-
-async function lookupWord(word) {
-  if (ipaCache.has(word)) return ipaCache.get(word);
-  let result = null;
+async function localIpa(word) {
+  const dict = await loadIpaDict();
   for (const v of wordVariants(word)) {
-    const entry = await fetchEntry(v);
-    if (entry) {
-      result = parseEntry(entry, v);
-      break;
-    }
+    if (dict[v]) return { base: v, ipa: dict[v] };
   }
-  ipaCache.set(word, result);
+  return null;
+}
+
+// Nghĩa (tiếng Anh) từ Free Dictionary API — có hẹn giờ 5s, lỗi thì trả null
+const defCache = new Map();
+async function fetchDefinition(word) {
+  if (defCache.has(word)) return defCache.get(word);
+  let result = null;
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch(
+      "https://api.dictionaryapi.dev/api/v2/entries/en/" + encodeURIComponent(word),
+      { signal: ctrl.signal }
+    );
+    clearTimeout(timer);
+    if (res.ok) {
+      const data = await res.json();
+      const entry = Array.isArray(data) ? data[0] : null;
+      const meaning = (entry && entry.meanings && entry.meanings[0]) || {};
+      const def = ((meaning.definitions || [])[0] || {}).definition || "";
+      const ipa = (entry && (entry.phonetic ||
+        ((entry.phonetics || []).find((p) => p.text) || {}).text)) || "";
+      result = { pos: meaning.partOfSpeech || "", def, ipa };
+    }
+  } catch (err) {
+    console.warn("Không lấy được nghĩa:", err);
+  }
+  defCache.set(word, result);
   return result;
 }
 
-function showIpa(word, info) {
+function showIpa(word, ipaInfo) {
   const box = SHADOW_EL.ipa;
   box.innerHTML = "";
-  box.className = "neu-pressed px-4 py-3 text-sm flex flex-col gap-1";
+  box.className = "neu-pressed px-4 py-3 text-sm flex flex-col gap-1.5";
 
   const top = document.createElement("div");
-  top.className = "flex flex-wrap items-baseline gap-x-3 gap-y-1";
+  top.className = "flex flex-wrap items-center gap-x-3 gap-y-1";
 
   const w = document.createElement("span");
   w.className = "text-lg font-bold text-white";
   w.textContent = word;
-  top.appendChild(w);
 
-  if (info && info.ipa) {
-    const ipa = document.createElement("span");
-    ipa.className = "text-lg text-red-500 font-mono";
-    ipa.textContent = info.ipa;
-    top.appendChild(ipa);
-  }
+  const ipa = document.createElement("span");
+  ipa.className = "text-lg text-red-500";
+  ipa.textContent = ipaInfo ? ipaInfo.ipa : "";
 
   const play = document.createElement("button");
   play.className = "neu-btn px-3 py-1 text-xs text-gray-300";
   play.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
   play.title = "Đọc từ này";
   play.addEventListener("click", () => speak(word));
-  top.appendChild(play);
-  box.appendChild(top);
+
+  // Link Cambridge để nghe giọng người thật / xem chi tiết
+  const link = document.createElement("a");
+  link.className = "text-xs text-gray-500 hover:text-red-500 transition ml-auto";
+  link.href =
+    "https://dictionary.cambridge.org/dictionary/english/" +
+    encodeURIComponent((ipaInfo && ipaInfo.base) || word);
+  link.target = "_blank";
+  link.rel = "noopener";
+  link.innerHTML = 'Cambridge <i class="fa-solid fa-arrow-up-right-from-square"></i>';
+
+  top.append(w, ipa, play, link);
 
   const sub = document.createElement("span");
   sub.className = "text-xs text-gray-500";
-  if (!info) {
-    sub.textContent = "Chưa có IPA cho từ này (từ hiếm, tên riêng hoặc từ viết tắt).";
-  } else {
-    const parts = [];
-    if (info.base !== word) parts.push(`dạng gốc: ${info.base}`);
-    if (info.pos) parts.push(info.pos);
-    if (info.def) parts.push(info.def);
-    sub.textContent = parts.join(" · ");
-  }
-  box.appendChild(sub);
+  const parts = [];
+  if (ipaInfo && ipaInfo.base !== word) parts.push(`dạng gốc: ${ipaInfo.base}`);
+  if (!ipaInfo) parts.push("Từ này chưa có trong từ điển IPA, đang thử tra online...");
+  sub.textContent = parts.join(" · ");
+
+  box.append(top, sub);
+  return { ipaEl: ipa, subEl: sub, parts };
 }
+
+let pickToken = 0; // bấm từ khác nhanh -> bỏ kết quả của lần bấm cũ
 
 async function pickWord(span, token) {
   const word = token.toLowerCase().replace(/[’]/g, "'").replace(/^[^a-z']+|[^a-z']+$/g, "");
   if (!word) return;
+  const myPick = ++pickToken;
 
   SHADOW_EL.list.querySelectorAll(".word.is-picked").forEach((el) => el.classList.remove("is-picked"));
   span.classList.add("is-picked");
   speak(word);
 
-  SHADOW_EL.ipa.className = "neu-pressed px-4 py-3 text-sm text-gray-500";
-  SHADOW_EL.ipa.textContent = `Đang tra "${word}"...`;
+  // 1. IPA từ từ điển nhúng sẵn (nhanh, không cần mạng)
+  let ipaInfo = null;
   try {
-    showIpa(word, await lookupWord(word));
+    ipaInfo = await localIpa(word);
   } catch (err) {
     console.error(err);
-    SHADOW_EL.ipa.textContent = "Tra từ không được, check mạng rồi thử lại nha.";
   }
+  if (myPick !== pickToken) return;
+  const ui = showIpa(word, ipaInfo);
+
+  // 2. Nghĩa từ API (có thì hiện thêm, không có thì thôi)
+  const extra = await fetchDefinition(ipaInfo ? ipaInfo.base : word);
+  if (myPick !== pickToken) return;
+
+  const parts = ui.parts.filter((p) => !p.startsWith("Từ này chưa có"));
+  if (!ipaInfo && extra && extra.ipa) ui.ipaEl.textContent = extra.ipa;
+  if (!ipaInfo && !(extra && extra.ipa)) parts.push("Chưa tìm được IPA cho từ này, bấm Cambridge để xem.");
+  if (extra && extra.pos) parts.push(extra.pos);
+  if (extra && extra.def) parts.push(extra.def);
+  ui.subEl.textContent = parts.join(" · ");
 }
 
 // ---------- Khởi động ----------
