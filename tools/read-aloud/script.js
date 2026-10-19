@@ -155,16 +155,16 @@ const DIRECTIONS = {
     srcLabel: "Tiếng Việt",
     outLabel: "English",
     placeholder:
-      "Gõ câu tiếng Việt, ví dụ: Hôm nay t mệt quá nhưng vẫn phải làm cho xong...",
-    outPlaceholder: "Bản dịch tiếng Anh sẽ hiện ở đây...",
+      "Nhập câu tiếng Việt cần dịch, ví dụ: Hôm nay tôi hơi mệt nhưng vẫn muốn hoàn thành công việc.",
+    outPlaceholder: "Bản dịch tiếng Anh sẽ hiển thị tại đây.",
   },
   "en-vi": {
     sl: "en",
     tl: "vi",
     srcLabel: "English",
     outLabel: "Tiếng Việt",
-    placeholder: "Type an English sentence, e.g. I'm exhausted but I still have to finish this...",
-    outPlaceholder: "Bản dịch tiếng Việt sẽ hiện ở đây...",
+    placeholder: "Enter an English sentence to translate, e.g. I'm a bit tired, but I still want to finish my work.",
+    outPlaceholder: "Bản dịch tiếng Việt sẽ hiển thị tại đây.",
   },
 };
 
@@ -297,7 +297,7 @@ async function handleTranslate() {
   } catch (err) {
     console.error(err);
     DOM.outText.innerHTML =
-      '<span data-placeholder="1" class="text-gray-500 text-base">Dịch không được, check mạng rồi thử lại nha.</span>';
+      '<span data-placeholder="1" class="text-gray-500 text-base">Không thể dịch lúc này. Vui lòng kiểm tra kết nối mạng và thử lại.</span>';
     DOM.engineTag.textContent = "";
     renderShadow();
   } finally {
@@ -430,7 +430,7 @@ DOM.copyBtn.addEventListener("click", async () => {
     await navigator.clipboard.writeText(out);
     DOM.copyLabel.textContent = "Copied!";
   } catch {
-    DOM.copyLabel.textContent = "Lỗi copy";
+    DOM.copyLabel.textContent = "Không sao chép được";
   }
   setTimeout(() => (DOM.copyLabel.textContent = "Copy"), 1200);
 });
@@ -456,14 +456,14 @@ function renderHistory() {
 
   if (!historyItems.length) {
     DOM.historyList.innerHTML =
-      '<li class="text-sm text-gray-600 px-2 py-1">Chưa có câu nào.</li>';
+      '<li class="text-sm text-gray-600 px-2 py-1">Chưa có câu nào. Các câu đã dịch sẽ được lưu tại đây.</li>';
     return;
   }
 
   historyItems.forEach((item) => {
     const li = document.createElement("li");
     li.className = "history-item px-4 py-3 cursor-pointer flex items-start gap-3";
-    li.title = "Bấm để đọc lại";
+    li.title = "Nhấn để nghe lại";
 
     const icon = document.createElement("i");
     icon.className = "fa-solid fa-play text-gray-500 text-xs mt-1.5 shrink-0";
@@ -496,7 +496,7 @@ function renderHistory() {
 }
 
 DOM.clearHistoryBtn.addEventListener("click", () => {
-  if (!historyItems.length || !confirm("Xoá hết lịch sử?")) return;
+  if (!historyItems.length || !confirm("Xoá toàn bộ lịch sử dịch? Thao tác này không thể hoàn tác.")) return;
   historyItems = [];
   store.set("ra_history", historyItems);
   renderHistory();
@@ -596,7 +596,7 @@ function renderShadow() {
 
   if (!chunks.length) {
     SHADOW_EL.list.innerHTML =
-      '<p class="text-sm text-gray-600 px-1">Dịch 1 câu là câu tiếng Anh sẽ được chia cụm ở đây để m nhại theo.</p>';
+      '<p class="text-sm text-gray-600 px-1">Sau khi dịch, câu tiếng Anh sẽ được chia thành các cụm ngắn tại đây để bạn luyện nói theo.</p>';
     SHADOW_EL.btn.disabled = true;
     SHADOW_EL.btn.classList.add("opacity-50");
     return;
@@ -733,7 +733,7 @@ async function startShadow() {
 
       // 2. Đến lượt m: nghỉ bằng thời gian vừa đọc x hệ số, tối thiểu 1.2s
       const turn = Math.max(1200, (performance.now() - t0) * shadowSettings.pause);
-      setStatus(`🎤 Đến lượt m · ${tag}`, "you");
+      setStatus(`🎤 Đến lượt bạn · ${tag}`, "you");
       runTurnBar(turn);
       await sleep(turn);
     }
@@ -744,7 +744,7 @@ async function startShadow() {
     paintShadowButton();
     resetTurnBar();
     highlightChunk(-1);
-    setStatus("✅ Xong 1 lượt! Bấm Shadowing để luyện lại.", "listen");
+    setStatus("✅ Hoàn thành! Nhấn Shadowing để luyện lại.", "listen");
   }
 }
 
@@ -866,7 +866,7 @@ function showIpa(word, ipaInfo) {
   sub.className = "text-xs text-gray-500";
   const parts = [];
   if (ipaInfo && ipaInfo.base !== word) parts.push(`dạng gốc: ${ipaInfo.base}`);
-  if (!ipaInfo) parts.push("Từ này chưa có trong từ điển IPA, đang thử tra online...");
+  if (!ipaInfo) parts.push("Từ này chưa có trong từ điển IPA, đang tra cứu trực tuyến...");
   sub.textContent = parts.join(" · ");
 
   box.append(top, sub);
@@ -900,7 +900,7 @@ async function pickWord(span, token) {
 
   const parts = ui.parts.filter((p) => !p.startsWith("Từ này chưa có"));
   if (!ipaInfo && extra && extra.ipa) ui.ipaEl.textContent = extra.ipa;
-  if (!ipaInfo && !(extra && extra.ipa)) parts.push("Chưa tìm được IPA cho từ này, bấm Cambridge để xem.");
+  if (!ipaInfo && !(extra && extra.ipa)) parts.push("Không tìm thấy IPA cho từ này. Bạn có thể xem trên Cambridge.");
   if (extra && extra.pos) parts.push(extra.pos);
   if (extra && extra.def) parts.push(extra.def);
   ui.subEl.textContent = parts.join(" · ");
