@@ -924,7 +924,6 @@ async function pickWord(span, token) {
    TAB 2: CHUẨN HOÁ VIẾT TẮT + NATURAL ENGLISH (AI)
    A. normalizeVi: "t mệt vãi, ko làm đc" -> "tôi mệt quá, không làm được"
    B. Gemini gợi ý cách nói tự nhiên (casual / neutral + ghi chú)
-   C. Hỏi AI: sao chép câu hỏi và mở Claude, không cần key
    ========================================= */
 
 // ---------- A. Từ điển viết tắt / văn nói ----------
@@ -971,8 +970,9 @@ const AI_DEFAULT_MODEL = "gemini-flash-latest";
 const AI_EL = {
   btn: $("ai-btn"),
   label: $("ai-label"),
-  askBtn: $("ask-ai-btn"),
-  askLabel: $("ask-ai-label"),
+  testBtn: $("ai-test-btn"),
+  testLabel: $("ai-test-label"),
+  testResult: $("ai-test-result"),
   settingsBtn: $("ai-settings-btn"),
   settings: $("ai-settings"),
   key: $("ai-key"),
@@ -1032,22 +1032,50 @@ function buildAiPrompt(source, isVietnamese, machine) {
 // Lỗi từ Google -> câu dễ hiểu
 function aiErrorMessage(status, message) {
   const msg = String(message || "");
-  if (status === 400 && /api key/i.test(msg)) return "API key không hợp lệ. Vui lòng kiểm tra lại key trong phần cài đặt.";
+  if ((status === 400 && /api.?key/i.test(msg)) || status === 401)
+    return "API key không hợp lệ. Vui lòng kiểm tra lại key (dán đủ, không dư khoảng trắng), hoặc đợi vài phút nếu key vừa tạo.";
   if (status === 403) return "Key bị từ chối. Nếu bạn đã giới hạn key, hãy kiểm tra lại trang web và API được phép.";
   if (status === 404) return `Không tìm thấy model "${AI_EL.model.value}". Vui lòng kiểm tra tên model trong phần cài đặt.`;
-  if (status === 429) return "Đã hết lượt sử dụng miễn phí trong lúc này. Vui lòng thử lại sau, hoặc dùng nút Hỏi AI.";
+  if (status === 429) return "Đã hết lượt sử dụng miễn phí trong lúc này. Vui lòng thử lại sau.";
   if (status >= 500) return "Máy chủ Gemini đang bận. Vui lòng thử lại sau ít phút.";
   return "Không thể gọi AI lúc này" + (msg ? `: ${msg}` : ".");
 }
 
-async function callGemini(prompt) {
-  const key = store.get("ra_ai_key", "");
-  const model = store.get("ra_ai_model", AI_DEFAULT_MODEL) || AI_DEFAULT_MODEL;
-  const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=` +
-    encodeURIComponent(key);
+// Gửi yêu cầu tới Gemini. Key gửi qua header x-goog-api-key (cách Google khuyên dùng);
+// nếu bị báo sai key thì thử lại 1 lần với kiểu cũ ?key=... (phòng key định dạng khác nhau)
+const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/";
 
-  const res = await fetch(url, {
+class GeminiError extends Error {
+  constructor(status, raw) {
+    super(aiErrorMessage(status, raw));
+    this.status = status;
+    this.raw = raw || ""; // thông báo gốc của Google, hiện kèm để dễ tìm lỗi
+  }
+}
+
+async function geminiFetch(path, options = {}) {
+  const key = store.get("ra_ai_key", "").trim();
+  const attempt = async (useHeader) => {
+    const url = GEMINI_BASE + path + (useHeader ? "" : (path.includes("?") ? "&" : "?") + "key=" + encodeURIComponent(key));
+    const headers = { ...(options.headers || {}) };
+    if (useHeader) headers["x-goog-api-key"] = key;
+    const res = await fetch(url, { ...options, headers });
+    const data = await res.json().catch(() => ({}));
+    return { res, data };
+  };
+
+  let { res, data } = await attempt(true);
+  if (!res.ok && (res.status === 400 || res.status === 401 || res.status === 403)) {
+    const retry = await attempt(false);
+    if (retry.res.ok) ({ res, data } = retry);
+  }
+  if (!res.ok) throw new GeminiError(res.status, data.error && data.error.message);
+  return data;
+}
+
+async function callGemini(prompt) {
+  const model = store.get("ra_ai_model", AI_DEFAULT_MODEL) || AI_DEFAULT_MODEL;
+  const data = await geminiFetch(`models/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -1055,10 +1083,6 @@ async function callGemini(prompt) {
       generationConfig: { responseMimeType: "application/json", temperature: 0.7 },
     }),
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(aiErrorMessage(res.status, data.error && data.error.message));
-  }
 
   // Ghép các phần chữ (bỏ phần "suy nghĩ" nếu model có trả về)
   const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
@@ -1069,18 +1093,99 @@ async function callGemini(prompt) {
   return json;
 }
 
+// ---------- Kiểm tra key: gọi danh sách model ----------
+async function testKey() {
+  const box = AI_EL.testResult;
+  box.classList.remove("hidden");
+  box.className = "text-xs leading-relaxed text-gray-500";
+  if (!store.get("ra_ai_key", "").trim()) {
+    box.textContent = "Chưa có API key.";
+    return;
+  }
+  AI_EL.testBtn.disabled = true;
+  AI_EL.testLabel.textContent = "Đang kiểm tra...";
+  box.textContent = "Đang kết nối tới Gemini...";
+
+  try {
+    const data = await geminiFetch("models?pageSize=200");
+    // Lấy các model tạo được nội dung, ưu tiên dòng "flash"
+    const names = (data.models || [])
+      .filter((m) => (m.supportedGenerationMethods || []).includes("generateContent"))
+      .map((m) => m.name.replace(/^models\//, ""));
+    const flash = names.filter((n) => /flash/i.test(n) && !/image|tts|audio|live|embedding/i.test(n));
+    const current = AI_EL.model.value.trim() || AI_DEFAULT_MODEL;
+
+    box.className = "text-xs leading-relaxed text-gray-400";
+    box.innerHTML = "";
+    const ok = document.createElement("p");
+    ok.className = "text-green-400 font-semibold";
+    ok.textContent = "✓ Key hợp lệ.";
+    box.appendChild(ok);
+
+    if (!names.includes(current) && flash.length) {
+      // Model đang chọn không có trong danh sách -> tự chuyển sang model flash đầu tiên
+      const pick = flash.includes("gemini-flash-latest") ? "gemini-flash-latest" : flash[0];
+      AI_EL.model.value = pick;
+      store.set("ra_ai_model", pick);
+      const note = document.createElement("p");
+      note.textContent = `Model "${current}" không khả dụng, đã tự chuyển sang "${pick}".`;
+      box.appendChild(note);
+    }
+
+    if (flash.length) {
+      const list = document.createElement("p");
+      list.className = "mt-1";
+      list.textContent = "Model Flash khả dụng (nhấn để chọn): ";
+      flash.slice(0, 8).forEach((n, i) => {
+        const a = document.createElement("button");
+        a.className = "text-red-500 hover:underline";
+        a.textContent = n;
+        a.addEventListener("click", () => {
+          AI_EL.model.value = n;
+          store.set("ra_ai_model", n);
+          flashSaved();
+        });
+        if (i) list.appendChild(document.createTextNode(", "));
+        list.appendChild(a);
+      });
+      box.appendChild(list);
+    }
+  } catch (err) {
+    console.error(err);
+    box.className = "text-xs leading-relaxed text-red-400";
+    box.textContent = err.message || "Không thể kết nối tới Gemini. Vui lòng kiểm tra mạng.";
+    if (err.raw) {
+      const raw = document.createElement("span");
+      raw.className = "block text-gray-600 mt-1";
+      raw.textContent = "Chi tiết từ Google: " + err.raw;
+      box.appendChild(raw);
+    }
+  } finally {
+    AI_EL.testBtn.disabled = false;
+    AI_EL.testLabel.textContent = "Kiểm tra key";
+  }
+}
+
+AI_EL.testBtn.addEventListener("click", testKey);
+
 // ---------- Hiển thị kết quả AI ----------
 function clearAiResult() {
   AI_EL.result.innerHTML = "";
   AI_EL.result.classList.add("hidden");
 }
 
-function showAiMessage(text) {
+function showAiMessage(text, raw) {
   AI_EL.result.innerHTML = "";
   const p = document.createElement("p");
   p.className = "text-sm text-gray-500 px-1";
   p.textContent = text;
   AI_EL.result.appendChild(p);
+  if (raw) {
+    const d = document.createElement("p");
+    d.className = "text-xs text-gray-600 px-1";
+    d.textContent = "Chi tiết từ Google: " + raw;
+    AI_EL.result.appendChild(d);
+  }
   AI_EL.result.classList.remove("hidden");
 }
 
@@ -1206,7 +1311,8 @@ async function handleAi() {
     showAiMessage(
       err instanceof SyntaxError
         ? "AI trả về kết quả không đúng định dạng. Vui lòng thử lại."
-        : err.message || "Không thể kết nối tới AI. Vui lòng kiểm tra mạng và thử lại."
+        : err.message || "Không thể kết nối tới AI. Vui lòng kiểm tra mạng và thử lại.",
+      err.raw
     );
   } finally {
     AI_EL.btn.disabled = false;
@@ -1215,34 +1321,6 @@ async function handleAi() {
 }
 
 AI_EL.btn.addEventListener("click", handleAi);
-
-// ---------- C. Hỏi AI (không cần key) ----------
-AI_EL.askBtn.addEventListener("click", async () => {
-  const src = DOM.srcText.value.trim();
-  if (!src) {
-    DOM.srcText.focus();
-    return;
-  }
-  const isVi = dir === "vi-en";
-  const prompt = [
-    "Tôi đang học tiếng Anh-Mỹ.",
-    isVi ? `Tôi muốn nói câu này bằng tiếng Anh: "${src}"` : `Tôi viết câu tiếng Anh này, muốn nó tự nhiên hơn: "${src}"`,
-    "Hãy cho tôi:",
-    "1. Cách nói tự nhiên hằng ngày (casual) như người Mỹ thật sự nói",
-    "2. Cách nói lịch sự (neutral), dùng ở chỗ làm",
-    "3. Giải thích ngắn bằng tiếng Việt các cụm từ đáng học",
-  ].join("\n");
-
-  // Mở tab trước (trình duyệt chỉ cho mở tab ngay khi bấm), rồi mới sao chép
-  window.open("https://claude.ai/new", "_blank", "noopener");
-  try {
-    await navigator.clipboard.writeText(prompt);
-    AI_EL.askLabel.textContent = "Đã sao chép, dán vào Claude";
-  } catch {
-    AI_EL.askLabel.textContent = "Không sao chép được";
-  }
-  setTimeout(() => (AI_EL.askLabel.textContent = "Hỏi AI"), 2500);
-});
 
 // ---------- Khởi động ----------
 applyDirection();

@@ -73,7 +73,7 @@ Distraction-free reader for TTS plus a Vietnamese → English practice mode.
 - Translate Vietnamese ⇄ English with a flag switch (Google, auto-fallback to MyMemory).
 - Quick clear buttons, so no more Ctrl+A → Delete.
 - Vietnamese shorthand (t, m, ko, đc…) is expanded before translating for better results.
-- Natural English: optional Gemini suggestions (casual + neutral + notes) using your own API key stored in the browser, or one-click "Ask AI" prompt for Claude.
+- Natural English: optional Gemini suggestions (casual + neutral + notes) using your own API key stored in the browser, with a built-in key/model check.
 - Mimic (shadowing) practice: English split into short chunks, listen → your turn → next, with repeat and pause controls.
 - Click any word to see its IPA (built-in ~40k-word US dictionary, works offline) plus a short definition when online.
 - Speak with browser voices (Edge Natural voices preferred), adjustable speed.

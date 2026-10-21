@@ -417,11 +417,10 @@
                 <span class="tip-box" role="tooltip">
                   Máy dịch thường dịch sát nghĩa nên câu dễ bị cứng.
                   <br /><br />
-                  • <b>Tự nhiên hơn</b>: dùng AI (Gemini) để gợi ý cách nói
-                  tự nhiên theo văn nói và văn lịch sự, kèm ghi chú. Cần
-                  API key trong phần cài đặt.<br />
-                  • <b>Hỏi AI</b>: sao chép sẵn câu hỏi và mở Claude, chỉ cần
-                  dán vào (Ctrl + V). Không cần API key.
+                  Nhấn <b>Tự nhiên hơn</b> để AI (Gemini) gợi ý cách nói tự
+                  nhiên theo văn nói và văn lịch sự, kèm ghi chú các cụm đáng
+                  học. Cần nhập API key trong phần cài đặt (biểu tượng bánh
+                  răng).
                 </span>
               </span>
             </span>
@@ -432,14 +431,6 @@
               >
                 <i class="fa-solid fa-wand-magic-sparkles"></i>
                 <span id="ai-label">Tự nhiên hơn</span>
-              </button>
-              <button
-                id="ask-ai-btn"
-                class="neu-btn px-4 py-1.5 text-xs text-gray-300 font-semibold flex items-center gap-2"
-                title="Sao chép câu hỏi và mở Claude"
-              >
-                <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                <span id="ask-ai-label">Hỏi AI</span>
               </button>
               <button
                 id="ai-settings-btn"
@@ -497,7 +488,17 @@
                 >Google AI Studio</a
               >. Nên giới hạn key chỉ dùng cho trang này và không bật thanh toán.
             </p>
-            <span id="ai-saved" class="text-xs text-gray-600"></span>
+            <div class="flex flex-wrap items-center gap-3">
+              <button
+                id="ai-test-btn"
+                class="neu-btn px-4 py-1.5 text-xs text-gray-300 font-semibold flex items-center gap-2"
+              >
+                <i class="fa-solid fa-plug-circle-check"></i>
+                <span id="ai-test-label">Kiểm tra key</span>
+              </button>
+              <span id="ai-saved" class="text-xs text-gray-600"></span>
+            </div>
+            <div id="ai-test-result" class="hidden text-xs leading-relaxed"></div>
           </div>
 
           <!-- Kết quả AI -->
