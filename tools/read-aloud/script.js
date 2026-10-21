@@ -34,6 +34,11 @@ const DOM = {
   outLabel: $("out-label"),
   outText: $("out-text"),
   engineTag: $("engine-tag"),
+  variantToggle: $("variant-toggle"),
+  variantBtns: document.querySelectorAll(".variant-btn"),
+  altEn: $("alt-en"),
+  altEnText: $("alt-en-text"),
+  aiNotes: $("ai-notes"),
   speakBtn: $("speak-btn"),
   stopBtn: $("stop-btn"),
   copyBtn: $("copy-btn"),
@@ -173,6 +178,11 @@ if (!DIRECTIONS[dir]) dir = "vi-en";
 
 // Hiện chữ xám gợi ý trong khung kết quả khi chưa có bản dịch
 function showOutPlaceholder() {
+  current = null;
+  DOM.variantToggle.classList.add("hidden");
+  DOM.altEn.classList.add("hidden");
+  DOM.aiNotes.classList.add("hidden");
+  DOM.engineTag.title = "";
   DOM.outText.innerHTML = "";
   const span = document.createElement("span");
   span.className = "text-gray-600 text-base";
@@ -200,7 +210,6 @@ function setDirection(newDir) {
 
 // Bấm công tắc: đổi chiều. Nếu đã có bản dịch thì đảo luôn 2 bên cho tiện
 DOM.dirBtn.addEventListener("click", () => {
-  clearAiResult();
   const src = DOM.srcText.value.trim();
   const out = currentOutput();
   setDirection(dir === "vi-en" ? "en-vi" : "vi-en");
@@ -256,10 +265,74 @@ async function translate(text, sl, tl) {
   }
 }
 
-function showOutput(text, engine) {
-  DOM.outText.textContent = text;
-  DOM.engineTag.textContent = engine ? `· via ${engine}` : "";
+/* ---------- Kết quả dịch hiện tại ----------
+   current = {
+     src, dir, engine,            // câu gốc, chiều dịch, ai dịch ("AI" / "Google"...)
+     variants: {casual, neutral}, // chỉ có khi AI dịch
+     vietnamese,                  // EN -> VI: nghĩa tiếng Việt do AI dịch
+     single,                      // bản dịch 1 câu (Google / lịch sử)
+     notes: [], warn, normalized  // ghi chú AI, cảnh báo dự phòng, câu đã chuẩn hoá
+   }
+*/
+let current = null;
+let variant = store.get("ra_variant", "casual");
+
+function selectedVariant() {
+  if (!current || !current.variants) return "";
+  return current.variants[variant] || current.variants.casual || current.variants.neutral || "";
+}
+
+function renderResult() {
+  if (!current) return showOutPlaceholder();
+  const hasVariants = Boolean(current.variants);
+
+  // Công tắc Casual | Neutral
+  DOM.variantToggle.classList.toggle("hidden", !hasVariants);
+  DOM.variantBtns.forEach((b) => b.classList.toggle("neu-active", b.dataset.variant === variant));
+
+  // Khung kết quả chính: VI->EN là câu tiếng Anh, EN->VI là nghĩa tiếng Việt
+  DOM.outText.textContent =
+    current.dir === "vi-en"
+      ? (hasVariants ? selectedVariant() : current.single)
+      : (current.vietnamese || current.single || "");
+
+  // EN->VI + AI: hiện thêm cách nói lại câu tiếng Anh cho tự nhiên
+  const showAlt = current.dir === "en-vi" && hasVariants;
+  DOM.altEn.classList.toggle("hidden", !showAlt);
+  if (showAlt) DOM.altEnText.textContent = selectedVariant();
+
+  // Nhãn nguồn dịch
+  let tag = current.engine ? `· via ${current.engine}` : "";
+  if (current.normalized) tag += " · đã chuẩn hoá viết tắt";
+  DOM.engineTag.textContent = tag;
+  DOM.engineTag.title = current.normalized ? "Câu đã gửi dịch: " + current.normalized : "";
+
+  // Ghi chú AI + cảnh báo dự phòng
+  DOM.aiNotes.innerHTML = "";
+  const lines = [...(current.notes || [])];
+  if (current.warn) lines.push(current.warn);
+  lines.forEach((text, i) => {
+    const li = document.createElement("li");
+    li.className = "flex gap-2";
+    const isWarn = current.warn && i === lines.length - 1;
+    const dot = document.createElement("span");
+    dot.className = isWarn ? "text-gray-600" : "text-red-500";
+    dot.textContent = isWarn ? "ⓘ" : "•";
+    const t = document.createElement("span");
+    if (isWarn) t.className = "text-xs text-gray-500";
+    t.textContent = text;
+    li.append(dot, t);
+    DOM.aiNotes.appendChild(li);
+  });
+  DOM.aiNotes.classList.toggle("hidden", !lines.length);
+
   renderShadow();
+}
+
+// Hiện 1 bản dịch đơn (dùng khi đổi chiều, bấm lịch sử)
+function showOutput(text, engine) {
+  current = { src: DOM.srcText.value.trim(), dir, engine, single: text, notes: [] };
+  renderResult();
 }
 
 // Lấy bản dịch đang hiển thị (bỏ qua chữ gợi ý xám)
@@ -269,9 +342,38 @@ function currentOutput() {
     : DOM.outText.textContent.trim();
 }
 
-// Câu tiếng Anh để đọc: VI->EN thì là bản dịch, EN->VI thì là câu m gõ
+// Câu tiếng Anh để đọc / Mimic:
+// VI->EN: bản dịch đang hiện; EN->VI: câu tự nhiên của AI (nếu có), không thì câu m gõ
 function currentEnglish() {
-  return dir === "vi-en" ? currentOutput() : DOM.srcText.value.trim();
+  if (dir === "vi-en") return currentOutput();
+  return (current && current.variants && selectedVariant()) || DOM.srcText.value.trim();
+}
+
+// Lưu lịch sử: cùng câu tiếng Việt thì thay dòng cũ, không thêm dòng trùng
+function upsertHistory() {
+  const en = currentEnglish();
+  const vi = dir === "vi-en" ? DOM.srcText.value.trim() : currentOutput();
+  if (!en || !vi) return;
+  historyItems = historyItems.filter((h) => h.vi !== vi);
+  addHistory({ vi, en, dir });
+}
+
+// Đổi Casual <-> Neutral
+DOM.variantBtns.forEach((btn) =>
+  btn.addEventListener("click", () => {
+    variant = btn.dataset.variant;
+    store.set("ra_variant", variant);
+    renderResult();
+    upsertHistory();
+  })
+);
+
+async function translateWithGoogle(src) {
+  const { sl, tl } = DIRECTIONS[dir];
+  // VI -> EN: đổi từ viết tắt / văn nói (t, m, ko, đc...) sang chữ đầy đủ trước khi dịch
+  const toSend = dir === "vi-en" ? normalizeVi(src) : src;
+  const { out, engine } = await translate(toSend, sl, tl);
+  return { src, dir, engine, single: out, notes: [], normalized: toSend !== src ? toSend : "" };
 }
 
 async function handleTranslate() {
@@ -281,35 +383,51 @@ async function handleTranslate() {
     return;
   }
 
-  const { sl, tl } = DIRECTIONS[dir];
   DOM.translateBtn.disabled = true;
   DOM.translateLabel.textContent = "Đang dịch...";
-  clearAiResult();
+  stopShadow();
 
-  // VI -> EN: đổi từ viết tắt / văn nói (t, m, ko, đc...) sang chữ đầy đủ trước khi dịch
-  const toSend = dir === "vi-en" ? normalizeVi(src) : src;
+  const hasKey = Boolean(store.get("ra_ai_key", "").trim());
+  let result = null;
+  let aiError = null;
 
-  try {
-    const { out, engine } = await translate(toSend, sl, tl);
-    showOutput(out, engine);
-    if (toSend !== src) {
-      DOM.engineTag.textContent += " · đã chuẩn hoá viết tắt";
-      DOM.engineTag.title = "Câu đã gửi dịch: " + toSend;
-    } else {
-      DOM.engineTag.title = "";
+  // 1. AI dịch (nếu có key)
+  if (hasKey) {
+    try {
+      const json = await callGemini(buildAiPrompt(src, dir));
+      result = {
+        src, dir, engine: "AI",
+        variants: { casual: json.casual || json.neutral, neutral: json.neutral || json.casual },
+        vietnamese: json.vietnamese || "",
+        notes: Array.isArray(json.notes) ? json.notes.filter(Boolean) : [],
+      };
+    } catch (err) {
+      console.warn("AI lỗi, chuyển sang Google:", err);
+      aiError = err;
     }
+  }
 
-    // Lịch sử luôn lưu theo cặp vi/en, kèm chiều dịch
-    const vi = dir === "vi-en" ? src : out;
-    const en = dir === "vi-en" ? out : src;
-    addHistory({ vi, en, dir });
-
-    if (DOM.autoSpeak.checked) speak(en);
+  // 2. Dự phòng: Google Dịch
+  try {
+    if (!result) {
+      result = await translateWithGoogle(src);
+      if (aiError) {
+        result.engine += " (dự phòng)";
+        result.warn = "AI không khả dụng nên đã dùng Google Dịch. " + (aiError.message || "") +
+          (aiError.raw ? ` (Chi tiết từ Google: ${aiError.raw})` : "");
+      } else if (!hasKey) {
+        result.warn = "Thêm Gemini API key (biểu tượng bánh răng) để có bản dịch tự nhiên hơn kèm ghi chú.";
+      }
+    }
+    current = result;
+    renderResult();
+    upsertHistory();
+    if (DOM.autoSpeak.checked) speak(currentEnglish());
   } catch (err) {
     console.error(err);
+    showOutPlaceholder();
     DOM.outText.innerHTML =
       '<span data-placeholder="1" class="text-gray-500 text-base">Không thể dịch lúc này. Vui lòng kiểm tra kết nối mạng và thử lại.</span>';
-    DOM.engineTag.textContent = "";
     renderShadow();
   } finally {
     DOM.translateBtn.disabled = false;
@@ -330,7 +448,6 @@ DOM.srcText.addEventListener("keydown", (e) => {
 // Nút xoá nhanh: xoá cả câu gõ lẫn bản dịch, dừng đọc, focus lại để gõ tiếp
 DOM.learnClearBtn.addEventListener("click", () => {
   DOM.srcText.value = "";
-  clearAiResult();
   stopShadow();
   speechSynthesis.cancel();
   showOutPlaceholder();
@@ -496,8 +613,7 @@ function renderHistory() {
 
     // Bấm vào: đưa câu lên khung chính (đúng chiều dịch cũ) và đọc lại
     li.addEventListener("click", () => {
-      clearAiResult();
-      const itemDir = DIRECTIONS[item.dir] ? item.dir : "vi-en";
+          const itemDir = DIRECTIONS[item.dir] ? item.dir : "vi-en";
       setDirection(itemDir);
       DOM.srcText.value = itemDir === "vi-en" ? item.vi : item.en;
       showOutput(itemDir === "vi-en" ? item.en : item.vi, "");
@@ -923,7 +1039,7 @@ async function pickWord(span, token) {
 /* =========================================
    TAB 2: CHUẨN HOÁ VIẾT TẮT + NATURAL ENGLISH (AI)
    A. normalizeVi: "t mệt vãi, ko làm đc" -> "tôi mệt quá, không làm được"
-   B. Gemini gợi ý cách nói tự nhiên (casual / neutral + ghi chú)
+   B. Gemini dịch tự nhiên (casual / neutral + ghi chú), lỗi thì dùng Google
    ========================================= */
 
 // ---------- A. Từ điển viết tắt / văn nói ----------
@@ -965,11 +1081,9 @@ function normalizeVi(text) {
 }
 
 // ---------- Cài đặt AI ----------
-const AI_DEFAULT_MODEL = "gemini-flash-latest";
+const AI_DEFAULT_MODEL = "gemini-flash-lite-latest";
 
 const AI_EL = {
-  btn: $("ai-btn"),
-  label: $("ai-label"),
   testBtn: $("ai-test-btn"),
   testLabel: $("ai-test-label"),
   testResult: $("ai-test-result"),
@@ -979,7 +1093,6 @@ const AI_EL = {
   keyToggle: $("ai-key-toggle"),
   model: $("ai-model"),
   saved: $("ai-saved"),
-  result: $("ai-result"),
 };
 
 AI_EL.key.value = store.get("ra_ai_key", "");
@@ -1013,20 +1126,32 @@ AI_EL.settingsBtn.addEventListener("click", () => {
 });
 
 // ---------- B. Gọi Gemini ----------
-function buildAiPrompt(source, isVietnamese, machine) {
-  return [
-    "You are an American English speaking coach for a Vietnamese learner.",
-    isVietnamese
-      ? `The learner wants to say this in English (written in casual Vietnamese, may contain shorthand or slang): """${source}"""`
-      : `The learner wrote this English sentence and wants it to sound natural: """${source}"""`,
-    machine ? `Machine translation for reference (often too literal): """${machine}"""` : "",
-    "Give natural American English ways to say it, the way a native speaker would actually say it.",
-    'Return ONLY JSON in this exact shape: {"casual": "...", "neutral": "...", "notes": ["...", "..."]}',
+function buildAiPrompt(source, direction) {
+  const common = [
     "- casual: everyday spoken American English between friends; contractions are fine; avoid profanity and heavy slang unless the original is clearly very informal.",
     "- neutral: polite and natural, suitable for work or talking to strangers.",
     "- notes: 2-3 short notes written in Vietnamese explaining key phrase choices or useful expressions (quote the English phrase). Each note under 25 words.",
     "Keep the original meaning. Do not add new information.",
-  ].filter(Boolean).join("\n");
+  ];
+  if (direction === "vi-en") {
+    return [
+      "You are an American English speaking coach for a Vietnamese learner.",
+      `The learner wants to say this in English (casual Vietnamese, may contain shorthand or slang like t = tôi, m = bạn, ko = không, đc = được): """${source}"""`,
+      "Translate it into natural American English, the way a native speaker would actually say it, not a literal translation.",
+      'Return ONLY JSON in this exact shape: {"casual": "...", "neutral": "...", "notes": ["..."]}',
+      ...common,
+    ].join("\n");
+  }
+  return [
+    "You are an American English speaking coach for a Vietnamese learner.",
+    `The learner wrote this English sentence: """${source}"""`,
+    'Return ONLY JSON in this exact shape: {"vietnamese": "...", "casual": "...", "neutral": "...", "notes": ["..."]}',
+    "- vietnamese: a natural Vietnamese translation of what the learner means.",
+    "- casual / neutral: how a native American speaker would naturally say the same thing (keep it if already natural).",
+    ...common.slice(0, 2),
+    "- notes: 2-3 short notes in Vietnamese about mistakes or awkward parts in the learner's sentence and useful expressions (quote the English phrase). Each under 25 words.",
+    common[3],
+  ].join("\n");
 }
 
 // Lỗi từ Google -> câu dễ hiểu
@@ -1124,7 +1249,7 @@ async function testKey() {
 
     if (!names.includes(current) && flash.length) {
       // Model đang chọn không có trong danh sách -> tự chuyển sang model flash đầu tiên
-      const pick = flash.includes("gemini-flash-latest") ? "gemini-flash-latest" : flash[0];
+      const pick = ["gemini-flash-lite-latest", "gemini-flash-latest"].find((m) => flash.includes(m)) || flash[0];
       AI_EL.model.value = pick;
       store.set("ra_ai_model", pick);
       const note = document.createElement("p");
@@ -1167,160 +1292,6 @@ async function testKey() {
 }
 
 AI_EL.testBtn.addEventListener("click", testKey);
-
-// ---------- Hiển thị kết quả AI ----------
-function clearAiResult() {
-  AI_EL.result.innerHTML = "";
-  AI_EL.result.classList.add("hidden");
-}
-
-function showAiMessage(text, raw) {
-  AI_EL.result.innerHTML = "";
-  const p = document.createElement("p");
-  p.className = "text-sm text-gray-500 px-1";
-  p.textContent = text;
-  AI_EL.result.appendChild(p);
-  if (raw) {
-    const d = document.createElement("p");
-    d.className = "text-xs text-gray-600 px-1";
-    d.textContent = "Chi tiết từ Google: " + raw;
-    AI_EL.result.appendChild(d);
-  }
-  AI_EL.result.classList.remove("hidden");
-}
-
-// Chọn 1 câu AI làm câu tiếng Anh chính -> Mimic + lịch sử dùng câu này
-function useSentence(sentence, card) {
-  const vi = dir === "vi-en" ? DOM.srcText.value.trim() : currentOutput();
-  if (dir === "vi-en") {
-    showOutput(sentence, "AI");
-  } else {
-    DOM.srcText.value = sentence;
-    renderShadow();
-  }
-  // Thay bản dịch máy của cùng câu tiếng Việt trong lịch sử, tránh bị trùng 2 dòng
-  historyItems = historyItems.filter((h) => h.vi !== vi);
-  addHistory({ vi, en: sentence, dir });
-  AI_EL.result.querySelectorAll(".ai-card").forEach((c) => c.classList.remove("is-chosen"));
-  card.classList.add("is-chosen");
-}
-
-function miniButton(html, title, onClick) {
-  const b = document.createElement("button");
-  b.className = "ai-mini neu-btn";
-  b.innerHTML = html;
-  b.title = title;
-  b.addEventListener("click", onClick);
-  return b;
-}
-
-function renderAiResult(json) {
-  AI_EL.result.innerHTML = "";
-  const rows = [
-    ["Casual", "Văn nói hằng ngày", json.casual],
-    ["Neutral", "Lịch sự, dùng ở chỗ làm", json.neutral],
-  ];
-
-  rows.forEach(([tag, hint, sentence]) => {
-    if (!sentence) return;
-    const card = document.createElement("div");
-    card.className = "ai-card";
-
-    const head = document.createElement("div");
-    head.className = "flex flex-wrap items-center justify-between gap-2";
-    const label = document.createElement("span");
-    label.className = "flex items-baseline gap-2";
-    label.innerHTML = `<span class="ai-tag">${tag}</span>`;
-    const hintEl = document.createElement("span");
-    hintEl.className = "text-xs text-gray-600";
-    hintEl.textContent = hint;
-    label.appendChild(hintEl);
-
-    const actions = document.createElement("div");
-    actions.className = "flex gap-2";
-    actions.append(
-      miniButton('<i class="fa-solid fa-volume-high"></i> Đọc', "Đọc câu này", () => speak(sentence)),
-      miniButton('<i class="fa-regular fa-copy"></i> Copy', "Sao chép", async (e) => {
-        const btn = e.currentTarget;
-        try {
-          await navigator.clipboard.writeText(sentence);
-          btn.innerHTML = '<i class="fa-solid fa-check"></i> Đã chép';
-        } catch {
-          btn.textContent = "Không sao chép được";
-        }
-        setTimeout(() => (btn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy'), 1200);
-      }),
-      miniButton('<i class="fa-solid fa-check"></i> Dùng câu này', "Dùng câu này cho Mimic và lưu vào lịch sử", () =>
-        useSentence(sentence, card)
-      )
-    );
-    head.append(label, actions);
-
-    const text = document.createElement("p");
-    text.className = "text-lg text-gray-100 leading-relaxed";
-    text.textContent = sentence;
-
-    card.append(head, text);
-    AI_EL.result.appendChild(card);
-  });
-
-  const notes = Array.isArray(json.notes) ? json.notes.filter(Boolean) : [];
-  if (notes.length) {
-    const box = document.createElement("ul");
-    box.className = "flex flex-col gap-1.5 px-1 text-sm text-gray-400";
-    notes.forEach((n) => {
-      const li = document.createElement("li");
-      li.className = "flex gap-2";
-      const dot = document.createElement("span");
-      dot.className = "text-red-500";
-      dot.textContent = "•";
-      const t = document.createElement("span");
-      t.textContent = n;
-      li.append(dot, t);
-      box.appendChild(li);
-    });
-    AI_EL.result.appendChild(box);
-  }
-  AI_EL.result.classList.remove("hidden");
-}
-
-async function handleAi() {
-  const src = DOM.srcText.value.trim();
-  if (!src) {
-    DOM.srcText.focus();
-    return;
-  }
-  if (!store.get("ra_ai_key", "")) {
-    AI_EL.settings.classList.remove("hidden");
-    AI_EL.settingsBtn.classList.add("neu-active");
-    showAiMessage("Vui lòng nhập Gemini API key trong phần cài đặt để dùng tính năng này.");
-    AI_EL.key.focus();
-    return;
-  }
-
-  AI_EL.btn.disabled = true;
-  AI_EL.label.textContent = "Đang xử lý...";
-  showAiMessage("AI đang soạn cách nói tự nhiên hơn...");
-
-  try {
-    const isVi = dir === "vi-en";
-    const machine = isVi ? currentOutput() : "";
-    renderAiResult(await callGemini(buildAiPrompt(src, isVi, machine)));
-  } catch (err) {
-    console.error(err);
-    showAiMessage(
-      err instanceof SyntaxError
-        ? "AI trả về kết quả không đúng định dạng. Vui lòng thử lại."
-        : err.message || "Không thể kết nối tới AI. Vui lòng kiểm tra mạng và thử lại.",
-      err.raw
-    );
-  } finally {
-    AI_EL.btn.disabled = false;
-    AI_EL.label.textContent = "Tự nhiên hơn";
-  }
-}
-
-AI_EL.btn.addEventListener("click", handleAi);
 
 // ---------- Khởi động ----------
 applyDirection();

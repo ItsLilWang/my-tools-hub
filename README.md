@@ -70,10 +70,9 @@ Create structured story briefs and AI prompts for short fiction.
 Distraction-free reader for TTS plus a Vietnamese → English practice mode.
 
 - Reader mode shows only your text, so Edge Read Aloud skips UI labels.
-- Translate Vietnamese ⇄ English with a flag switch (Google, auto-fallback to MyMemory).
+- Translate Vietnamese ⇄ English with a flag switch. With a Gemini API key (stored only in your browser) translations are natural, with Casual / Neutral versions and short notes; without a key or on AI errors it falls back to Google (then MyMemory).
 - Quick clear buttons, so no more Ctrl+A → Delete.
-- Vietnamese shorthand (t, m, ko, đc…) is expanded before translating for better results.
-- Natural English: optional Gemini suggestions (casual + neutral + notes) using your own API key stored in the browser, with a built-in key/model check.
+- Vietnamese shorthand (t, m, ko, đc…) is expanded before Google translation; built-in key/model check in settings.
 - Mimic (shadowing) practice: English split into short chunks, listen → your turn → next, with repeat and pause controls.
 - Click any word to see its IPA (built-in ~40k-word US dictionary, works offline) plus a short definition when online.
 - Speak with browser voices (Edge Natural voices preferred), adjustable speed.
