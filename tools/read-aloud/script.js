@@ -200,6 +200,7 @@ function setDirection(newDir) {
 
 // Bấm công tắc: đổi chiều. Nếu đã có bản dịch thì đảo luôn 2 bên cho tiện
 DOM.dirBtn.addEventListener("click", () => {
+  clearAiResult();
   const src = DOM.srcText.value.trim();
   const out = currentOutput();
   setDirection(dir === "vi-en" ? "en-vi" : "vi-en");
@@ -283,10 +284,20 @@ async function handleTranslate() {
   const { sl, tl } = DIRECTIONS[dir];
   DOM.translateBtn.disabled = true;
   DOM.translateLabel.textContent = "Đang dịch...";
+  clearAiResult();
+
+  // VI -> EN: đổi từ viết tắt / văn nói (t, m, ko, đc...) sang chữ đầy đủ trước khi dịch
+  const toSend = dir === "vi-en" ? normalizeVi(src) : src;
 
   try {
-    const { out, engine } = await translate(src, sl, tl);
+    const { out, engine } = await translate(toSend, sl, tl);
     showOutput(out, engine);
+    if (toSend !== src) {
+      DOM.engineTag.textContent += " · đã chuẩn hoá viết tắt";
+      DOM.engineTag.title = "Câu đã gửi dịch: " + toSend;
+    } else {
+      DOM.engineTag.title = "";
+    }
 
     // Lịch sử luôn lưu theo cặp vi/en, kèm chiều dịch
     const vi = dir === "vi-en" ? src : out;
@@ -319,6 +330,7 @@ DOM.srcText.addEventListener("keydown", (e) => {
 // Nút xoá nhanh: xoá cả câu gõ lẫn bản dịch, dừng đọc, focus lại để gõ tiếp
 DOM.learnClearBtn.addEventListener("click", () => {
   DOM.srcText.value = "";
+  clearAiResult();
   stopShadow();
   speechSynthesis.cancel();
   showOutPlaceholder();
@@ -484,6 +496,7 @@ function renderHistory() {
 
     // Bấm vào: đưa câu lên khung chính (đúng chiều dịch cũ) và đọc lại
     li.addEventListener("click", () => {
+      clearAiResult();
       const itemDir = DIRECTIONS[item.dir] ? item.dir : "vi-en";
       setDirection(itemDir);
       DOM.srcText.value = itemDir === "vi-en" ? item.vi : item.en;
@@ -905,6 +918,331 @@ async function pickWord(span, token) {
   if (extra && extra.def) parts.push(extra.def);
   ui.subEl.textContent = parts.join(" · ");
 }
+
+
+/* =========================================
+   TAB 2: CHUẨN HOÁ VIẾT TẮT + NATURAL ENGLISH (AI)
+   A. normalizeVi: "t mệt vãi, ko làm đc" -> "tôi mệt quá, không làm được"
+   B. Gemini gợi ý cách nói tự nhiên (casual / neutral + ghi chú)
+   C. Hỏi AI: sao chép câu hỏi và mở Claude, không cần key
+   ========================================= */
+
+// ---------- A. Từ điển viết tắt / văn nói ----------
+// Chỉ thay khi khớp NGUYÊN TỪ (không đụng vào giữa từ khác)
+const VI_SHORTHAND = {
+  // xưng hô
+  t: "tôi", tao: "tôi", tui: "tôi", tớ: "tôi",
+  m: "bạn", mày: "bạn", mi: "bạn",
+  mk: "mình", mik: "mình",
+  ổng: "ông ấy", bả: "bà ấy",
+  ae: "anh em", ny: "người yêu", ck: "chồng", vk: "vợ",
+  // phủ định / khẳng định
+  ko: "không", k: "không", kh: "không", hok: "không", hông: "không",
+  hong: "không", khum: "không", hem: "không", kg: "không",
+  đc: "được", dc: "được", đk: "được", dk: "được",
+  oke: "ổn", oki: "ổn", okela: "ổn",
+  // từ hay dùng
+  r: "rồi", rùi: "rồi", vs: "với", j: "gì",
+  ntn: "như thế nào", kb: "không biết", bik: "biết", bít: "biết",
+  ng: "người", nma: "nhưng mà", nhma: "nhưng mà",
+  z: "vậy", dz: "vậy", zậy: "vậy", dzậy: "vậy",
+  thik: "thích", iu: "yêu", cx: "cũng", cg: "cũng", lun: "luôn",
+  trc: "trước", lm: "làm", ns: "nói", nc: "nói chuyện",
+  bh: "bây giờ", bjo: "bây giờ", h: "giờ", ms: "mới", đag: "đang",
+  hnay: "hôm nay", hqua: "hôm qua", tks: "cảm ơn", thks: "cảm ơn",
+  // nhấn mạnh
+  vãi: "quá", vl: "quá", vcl: "quá", vkl: "quá", vch: "quá",
+};
+
+function normalizeVi(text) {
+  return text.normalize("NFC").replace(/[\p{L}\p{M}]+/gu, (word) => {
+    const full = VI_SHORTHAND[word.toLowerCase()];
+    if (!full) return word;
+    // Giữ viết hoa chữ đầu nếu từ gốc viết hoa (đầu câu)
+    return word[0] !== word[0].toLowerCase()
+      ? full[0].toUpperCase() + full.slice(1)
+      : full;
+  });
+}
+
+// ---------- Cài đặt AI ----------
+const AI_DEFAULT_MODEL = "gemini-flash-latest";
+
+const AI_EL = {
+  btn: $("ai-btn"),
+  label: $("ai-label"),
+  askBtn: $("ask-ai-btn"),
+  askLabel: $("ask-ai-label"),
+  settingsBtn: $("ai-settings-btn"),
+  settings: $("ai-settings"),
+  key: $("ai-key"),
+  keyToggle: $("ai-key-toggle"),
+  model: $("ai-model"),
+  saved: $("ai-saved"),
+  result: $("ai-result"),
+};
+
+AI_EL.key.value = store.get("ra_ai_key", "");
+AI_EL.model.value = store.get("ra_ai_model", AI_DEFAULT_MODEL);
+
+let savedTimer = null;
+function flashSaved() {
+  AI_EL.saved.textContent = "Đã lưu";
+  clearTimeout(savedTimer);
+  savedTimer = setTimeout(() => (AI_EL.saved.textContent = ""), 1200);
+}
+
+AI_EL.key.addEventListener("input", () => {
+  store.set("ra_ai_key", AI_EL.key.value.trim());
+  flashSaved();
+});
+AI_EL.model.addEventListener("input", () => {
+  store.set("ra_ai_model", AI_EL.model.value.trim() || AI_DEFAULT_MODEL);
+  flashSaved();
+});
+AI_EL.keyToggle.addEventListener("click", () => {
+  const show = AI_EL.key.type === "password";
+  AI_EL.key.type = show ? "text" : "password";
+  AI_EL.keyToggle.querySelector("i").className = show
+    ? "fa-solid fa-eye-slash"
+    : "fa-solid fa-eye";
+});
+AI_EL.settingsBtn.addEventListener("click", () => {
+  AI_EL.settings.classList.toggle("hidden");
+  AI_EL.settingsBtn.classList.toggle("neu-active", !AI_EL.settings.classList.contains("hidden"));
+});
+
+// ---------- B. Gọi Gemini ----------
+function buildAiPrompt(source, isVietnamese, machine) {
+  return [
+    "You are an American English speaking coach for a Vietnamese learner.",
+    isVietnamese
+      ? `The learner wants to say this in English (written in casual Vietnamese, may contain shorthand or slang): """${source}"""`
+      : `The learner wrote this English sentence and wants it to sound natural: """${source}"""`,
+    machine ? `Machine translation for reference (often too literal): """${machine}"""` : "",
+    "Give natural American English ways to say it, the way a native speaker would actually say it.",
+    'Return ONLY JSON in this exact shape: {"casual": "...", "neutral": "...", "notes": ["...", "..."]}',
+    "- casual: everyday spoken American English between friends; contractions are fine; avoid profanity and heavy slang unless the original is clearly very informal.",
+    "- neutral: polite and natural, suitable for work or talking to strangers.",
+    "- notes: 2-3 short notes written in Vietnamese explaining key phrase choices or useful expressions (quote the English phrase). Each note under 25 words.",
+    "Keep the original meaning. Do not add new information.",
+  ].filter(Boolean).join("\n");
+}
+
+// Lỗi từ Google -> câu dễ hiểu
+function aiErrorMessage(status, message) {
+  const msg = String(message || "");
+  if (status === 400 && /api key/i.test(msg)) return "API key không hợp lệ. Vui lòng kiểm tra lại key trong phần cài đặt.";
+  if (status === 403) return "Key bị từ chối. Nếu bạn đã giới hạn key, hãy kiểm tra lại trang web và API được phép.";
+  if (status === 404) return `Không tìm thấy model "${AI_EL.model.value}". Vui lòng kiểm tra tên model trong phần cài đặt.`;
+  if (status === 429) return "Đã hết lượt sử dụng miễn phí trong lúc này. Vui lòng thử lại sau, hoặc dùng nút Hỏi AI.";
+  if (status >= 500) return "Máy chủ Gemini đang bận. Vui lòng thử lại sau ít phút.";
+  return "Không thể gọi AI lúc này" + (msg ? `: ${msg}` : ".");
+}
+
+async function callGemini(prompt) {
+  const key = store.get("ra_ai_key", "");
+  const model = store.get("ra_ai_model", AI_DEFAULT_MODEL) || AI_DEFAULT_MODEL;
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=` +
+    encodeURIComponent(key);
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { responseMimeType: "application/json", temperature: 0.7 },
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(aiErrorMessage(res.status, data.error && data.error.message));
+  }
+
+  // Ghép các phần chữ (bỏ phần "suy nghĩ" nếu model có trả về)
+  const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
+  const text = parts.filter((p) => p.text && !p.thought).map((p) => p.text).join("");
+  const clean = text.replace(/^```(?:json)?\s*|\s*```$/g, "");
+  const json = JSON.parse(clean);
+  if (!json.casual && !json.neutral) throw new Error("AI trả về kết quả không đúng định dạng. Vui lòng thử lại.");
+  return json;
+}
+
+// ---------- Hiển thị kết quả AI ----------
+function clearAiResult() {
+  AI_EL.result.innerHTML = "";
+  AI_EL.result.classList.add("hidden");
+}
+
+function showAiMessage(text) {
+  AI_EL.result.innerHTML = "";
+  const p = document.createElement("p");
+  p.className = "text-sm text-gray-500 px-1";
+  p.textContent = text;
+  AI_EL.result.appendChild(p);
+  AI_EL.result.classList.remove("hidden");
+}
+
+// Chọn 1 câu AI làm câu tiếng Anh chính -> Mimic + lịch sử dùng câu này
+function useSentence(sentence, card) {
+  const vi = dir === "vi-en" ? DOM.srcText.value.trim() : currentOutput();
+  if (dir === "vi-en") {
+    showOutput(sentence, "AI");
+  } else {
+    DOM.srcText.value = sentence;
+    renderShadow();
+  }
+  // Thay bản dịch máy của cùng câu tiếng Việt trong lịch sử, tránh bị trùng 2 dòng
+  historyItems = historyItems.filter((h) => h.vi !== vi);
+  addHistory({ vi, en: sentence, dir });
+  AI_EL.result.querySelectorAll(".ai-card").forEach((c) => c.classList.remove("is-chosen"));
+  card.classList.add("is-chosen");
+}
+
+function miniButton(html, title, onClick) {
+  const b = document.createElement("button");
+  b.className = "ai-mini neu-btn";
+  b.innerHTML = html;
+  b.title = title;
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+function renderAiResult(json) {
+  AI_EL.result.innerHTML = "";
+  const rows = [
+    ["Casual", "Văn nói hằng ngày", json.casual],
+    ["Neutral", "Lịch sự, dùng ở chỗ làm", json.neutral],
+  ];
+
+  rows.forEach(([tag, hint, sentence]) => {
+    if (!sentence) return;
+    const card = document.createElement("div");
+    card.className = "ai-card";
+
+    const head = document.createElement("div");
+    head.className = "flex flex-wrap items-center justify-between gap-2";
+    const label = document.createElement("span");
+    label.className = "flex items-baseline gap-2";
+    label.innerHTML = `<span class="ai-tag">${tag}</span>`;
+    const hintEl = document.createElement("span");
+    hintEl.className = "text-xs text-gray-600";
+    hintEl.textContent = hint;
+    label.appendChild(hintEl);
+
+    const actions = document.createElement("div");
+    actions.className = "flex gap-2";
+    actions.append(
+      miniButton('<i class="fa-solid fa-volume-high"></i> Đọc', "Đọc câu này", () => speak(sentence)),
+      miniButton('<i class="fa-regular fa-copy"></i> Copy', "Sao chép", async (e) => {
+        const btn = e.currentTarget;
+        try {
+          await navigator.clipboard.writeText(sentence);
+          btn.innerHTML = '<i class="fa-solid fa-check"></i> Đã chép';
+        } catch {
+          btn.textContent = "Không sao chép được";
+        }
+        setTimeout(() => (btn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy'), 1200);
+      }),
+      miniButton('<i class="fa-solid fa-check"></i> Dùng câu này', "Dùng câu này cho Mimic và lưu vào lịch sử", () =>
+        useSentence(sentence, card)
+      )
+    );
+    head.append(label, actions);
+
+    const text = document.createElement("p");
+    text.className = "text-lg text-gray-100 leading-relaxed";
+    text.textContent = sentence;
+
+    card.append(head, text);
+    AI_EL.result.appendChild(card);
+  });
+
+  const notes = Array.isArray(json.notes) ? json.notes.filter(Boolean) : [];
+  if (notes.length) {
+    const box = document.createElement("ul");
+    box.className = "flex flex-col gap-1.5 px-1 text-sm text-gray-400";
+    notes.forEach((n) => {
+      const li = document.createElement("li");
+      li.className = "flex gap-2";
+      const dot = document.createElement("span");
+      dot.className = "text-red-500";
+      dot.textContent = "•";
+      const t = document.createElement("span");
+      t.textContent = n;
+      li.append(dot, t);
+      box.appendChild(li);
+    });
+    AI_EL.result.appendChild(box);
+  }
+  AI_EL.result.classList.remove("hidden");
+}
+
+async function handleAi() {
+  const src = DOM.srcText.value.trim();
+  if (!src) {
+    DOM.srcText.focus();
+    return;
+  }
+  if (!store.get("ra_ai_key", "")) {
+    AI_EL.settings.classList.remove("hidden");
+    AI_EL.settingsBtn.classList.add("neu-active");
+    showAiMessage("Vui lòng nhập Gemini API key trong phần cài đặt để dùng tính năng này.");
+    AI_EL.key.focus();
+    return;
+  }
+
+  AI_EL.btn.disabled = true;
+  AI_EL.label.textContent = "Đang xử lý...";
+  showAiMessage("AI đang soạn cách nói tự nhiên hơn...");
+
+  try {
+    const isVi = dir === "vi-en";
+    const machine = isVi ? currentOutput() : "";
+    renderAiResult(await callGemini(buildAiPrompt(src, isVi, machine)));
+  } catch (err) {
+    console.error(err);
+    showAiMessage(
+      err instanceof SyntaxError
+        ? "AI trả về kết quả không đúng định dạng. Vui lòng thử lại."
+        : err.message || "Không thể kết nối tới AI. Vui lòng kiểm tra mạng và thử lại."
+    );
+  } finally {
+    AI_EL.btn.disabled = false;
+    AI_EL.label.textContent = "Tự nhiên hơn";
+  }
+}
+
+AI_EL.btn.addEventListener("click", handleAi);
+
+// ---------- C. Hỏi AI (không cần key) ----------
+AI_EL.askBtn.addEventListener("click", async () => {
+  const src = DOM.srcText.value.trim();
+  if (!src) {
+    DOM.srcText.focus();
+    return;
+  }
+  const isVi = dir === "vi-en";
+  const prompt = [
+    "Tôi đang học tiếng Anh-Mỹ.",
+    isVi ? `Tôi muốn nói câu này bằng tiếng Anh: "${src}"` : `Tôi viết câu tiếng Anh này, muốn nó tự nhiên hơn: "${src}"`,
+    "Hãy cho tôi:",
+    "1. Cách nói tự nhiên hằng ngày (casual) như người Mỹ thật sự nói",
+    "2. Cách nói lịch sự (neutral), dùng ở chỗ làm",
+    "3. Giải thích ngắn bằng tiếng Việt các cụm từ đáng học",
+  ].join("\n");
+
+  // Mở tab trước (trình duyệt chỉ cho mở tab ngay khi bấm), rồi mới sao chép
+  window.open("https://claude.ai/new", "_blank", "noopener");
+  try {
+    await navigator.clipboard.writeText(prompt);
+    AI_EL.askLabel.textContent = "Đã sao chép, dán vào Claude";
+  } catch {
+    AI_EL.askLabel.textContent = "Không sao chép được";
+  }
+  setTimeout(() => (AI_EL.askLabel.textContent = "Hỏi AI"), 2500);
+});
 
 // ---------- Khởi động ----------
 applyDirection();

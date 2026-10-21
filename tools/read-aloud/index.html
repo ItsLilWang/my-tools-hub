@@ -105,6 +105,37 @@
         visibility: visible;
         transform: translateY(0);
       }
+      /* ===== Natural English (AI) ===== */
+      .ai-card {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0.85rem 1rem;
+        border-radius: 1rem;
+        background: #18181b;
+        box-shadow:
+          inset 4px 4px 9px #0a0a0b,
+          inset -4px -4px 9px #26262b;
+      }
+      .ai-card.is-chosen {
+        box-shadow:
+          inset 4px 4px 9px #0a0a0b,
+          inset -4px -4px 9px #26262b,
+          inset 0 0 0 1px rgba(239, 68, 68, 0.45);
+      }
+      .ai-tag {
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #ef4444;
+      }
+      .ai-mini {
+        padding: 0.2rem 0.6rem;
+        font-size: 0.7rem;
+        color: #a1a1aa;
+        border-radius: 0.5rem;
+      }
       /* ===== Mimic ===== */
       .seg-btn {
         min-width: 2.25rem;
@@ -374,6 +405,103 @@
             id="out-text"
             class="neu-pressed w-full min-h-[90px] p-4 text-red-500 text-lg leading-relaxed"
           ></div>
+        </div>
+
+        <!-- ===== AI: CÂU TỰ NHIÊN HƠN ===== -->
+        <div id="ai-box" class="flex flex-col gap-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+              Natural English
+              <span class="tip" tabindex="0" aria-label="Thông tin về Natural English">
+                <i class="fa-solid fa-circle-info"></i>
+                <span class="tip-box" role="tooltip">
+                  Máy dịch thường dịch sát nghĩa nên câu dễ bị cứng.
+                  <br /><br />
+                  • <b>Tự nhiên hơn</b>: dùng AI (Gemini) để gợi ý cách nói
+                  tự nhiên theo văn nói và văn lịch sự, kèm ghi chú. Cần
+                  API key trong phần cài đặt.<br />
+                  • <b>Hỏi AI</b>: sao chép sẵn câu hỏi và mở Claude, chỉ cần
+                  dán vào (Ctrl + V). Không cần API key.
+                </span>
+              </span>
+            </span>
+            <div class="flex flex-wrap gap-2">
+              <button
+                id="ai-btn"
+                class="neu-btn px-4 py-1.5 text-xs text-red-500 font-bold flex items-center gap-2"
+              >
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                <span id="ai-label">Tự nhiên hơn</span>
+              </button>
+              <button
+                id="ask-ai-btn"
+                class="neu-btn px-4 py-1.5 text-xs text-gray-300 font-semibold flex items-center gap-2"
+                title="Sao chép câu hỏi và mở Claude"
+              >
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                <span id="ask-ai-label">Hỏi AI</span>
+              </button>
+              <button
+                id="ai-settings-btn"
+                class="neu-btn w-8 h-8 flex items-center justify-center text-xs text-gray-400"
+                title="Cài đặt AI"
+              >
+                <i class="fa-solid fa-gear"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Cài đặt AI (ẩn/hiện bằng nút bánh răng) -->
+          <div id="ai-settings" class="hidden neu-pressed p-4 flex flex-col gap-3 text-sm">
+            <label class="flex flex-col gap-1.5">
+              <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Gemini API key
+              </span>
+              <div class="flex gap-2">
+                <input
+                  id="ai-key"
+                  type="password"
+                  autocomplete="off"
+                  spellcheck="false"
+                  class="neu-pressed flex-1 min-w-0 px-4 py-2 bg-transparent text-gray-200 outline-none placeholder-gray-600"
+                  placeholder="Dán API key từ Google AI Studio"
+                />
+                <button
+                  id="ai-key-toggle"
+                  class="neu-btn w-10 flex items-center justify-center text-gray-400"
+                  title="Hiện/ẩn key"
+                >
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+              </div>
+            </label>
+            <label class="flex flex-col gap-1.5">
+              <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Model
+              </span>
+              <input
+                id="ai-model"
+                type="text"
+                spellcheck="false"
+                class="neu-pressed px-4 py-2 bg-transparent text-gray-200 outline-none"
+              />
+            </label>
+            <p class="text-xs text-gray-500 leading-relaxed">
+              Key chỉ được lưu trong trình duyệt trên thiết bị này và chỉ được
+              gửi trực tiếp tới Google khi bạn nhấn "Tự nhiên hơn". Tạo key tại
+              <a
+                href="https://aistudio.google.com/apikey"
+                target="_blank"
+                rel="noopener"
+                class="text-red-500 hover:underline"
+                >Google AI Studio</a
+              >. Nên giới hạn key chỉ dùng cho trang này và không bật thanh toán.
+            </p>
+            <span id="ai-saved" class="text-xs text-gray-600"></span>
+          </div>
+
+          <!-- Kết quả AI -->
+          <div id="ai-result" class="hidden flex flex-col gap-3"></div>
         </div>
 
         <!-- ===== MIMIC (Shadowing) ===== -->
