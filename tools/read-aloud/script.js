@@ -330,9 +330,20 @@ function renderResult() {
 }
 
 // Hiện 1 bản dịch đơn (dùng khi đổi chiều, bấm lịch sử)
-function showOutput(text, engine) {
-  current = { src: DOM.srcText.value.trim(), dir, engine, single: text, notes: [] };
+function showOutput(text, engine, singleChunks) {
+  current = { src: DOM.srcText.value.trim(), dir, engine, single: text, notes: [], singleChunks };
   renderResult();
+}
+
+// Cụm ngắt câu do AI trả về cho câu tiếng Anh đang dùng (nếu có)
+function currentAiChunks() {
+  if (!current) return null;
+  if (current.variants && current.chunks) {
+    const list = current.chunks[variant] ||
+      (current.variants[variant] === current.variants.casual ? current.chunks.casual : null);
+    return Array.isArray(list) ? list : null;
+  }
+  return Array.isArray(current.singleChunks) ? current.singleChunks : null;
 }
 
 // Lấy bản dịch đang hiển thị (bỏ qua chữ gợi ý xám)
@@ -355,7 +366,10 @@ function upsertHistory() {
   const vi = dir === "vi-en" ? DOM.srcText.value.trim() : currentOutput();
   if (!en || !vi) return;
   historyItems = historyItems.filter((h) => h.vi !== vi);
-  addHistory({ vi, en, dir });
+  const item = { vi, en, dir };
+  const aiChunks = validChunks(currentAiChunks(), en);
+  if (aiChunks) item.chunks = aiChunks;
+  addHistory(item);
 }
 
 // Đổi Casual <-> Neutral
@@ -400,6 +414,7 @@ async function handleTranslate() {
         variants: { casual: json.casual || json.neutral, neutral: json.neutral || json.casual },
         vietnamese: json.vietnamese || "",
         notes: Array.isArray(json.notes) ? json.notes.filter(Boolean) : [],
+        chunks: json.chunks && typeof json.chunks === "object" ? json.chunks : null,
       };
     } catch (err) {
       console.warn("AI lỗi, chuyển sang Google:", err);
@@ -616,7 +631,7 @@ function renderHistory() {
           const itemDir = DIRECTIONS[item.dir] ? item.dir : "vi-en";
       setDirection(itemDir);
       DOM.srcText.value = itemDir === "vi-en" ? item.vi : item.en;
-      showOutput(itemDir === "vi-en" ? item.en : item.vi, "");
+      showOutput(itemDir === "vi-en" ? item.en : item.vi, "", item.chunks);
       speak(item.en);
     });
 
@@ -703,6 +718,16 @@ function splitChunks(text) {
   return merged;
 }
 
+// Kiểm tra cụm AI ghép lại có đúng câu gốc không (so chữ cái và số, bỏ qua khoảng trắng/dấu)
+// -> AI lỡ thêm/bớt chữ thì không dùng, tránh hiện sai câu
+function validChunks(list, sentence) {
+  if (!Array.isArray(list) || list.length < 1) return null;
+  const clean = list.map((c) => String(c || "").trim()).filter(Boolean);
+  if (!clean.length) return null;
+  const key = (t) => t.toLowerCase().replace(/[’]/g, "'").replace(/[^a-z0-9']/g, "");
+  return key(clean.join(" ")) === key(sentence) ? clean : null;
+}
+
 // ---------- Vẽ danh sách cụm ----------
 let chunks = [];
 
@@ -720,7 +745,8 @@ const SHADOW_EL = {
 function renderShadow() {
   stopShadow();
   const english = currentEnglish();
-  chunks = english ? splitChunks(english) : [];
+  // Ưu tiên cách ngắt của AI (theo nhịp nói); không có hoặc không khớp câu thì dùng luật của code
+  chunks = english ? (validChunks(currentAiChunks(), english) || splitChunks(english)) : [];
   SHADOW_EL.list.innerHTML = "";
 
   if (!chunks.length) {
@@ -1131,6 +1157,7 @@ function buildAiPrompt(source, direction) {
     "- casual: everyday spoken American English between friends; contractions are fine; avoid profanity and heavy slang unless the original is clearly very informal.",
     "- neutral: polite and natural, suitable for work or talking to strangers.",
     "- notes: 2-3 short notes written in Vietnamese explaining key phrase choices or useful expressions (quote the English phrase). Each note under 25 words.",
+    '- chunks: for BOTH casual and neutral, split the sentence into short speaking chunks (thought groups, usually 2-6 words) exactly where a native speaker would naturally pause. Keep every word and punctuation mark; joining the chunks with single spaces must reproduce the sentence exactly.',
     "Keep the original meaning. Do not add new information.",
   ];
   if (direction === "vi-en") {
@@ -1138,19 +1165,20 @@ function buildAiPrompt(source, direction) {
       "You are an American English speaking coach for a Vietnamese learner.",
       `The learner wants to say this in English (casual Vietnamese, may contain shorthand or slang like t = tôi, m = bạn, ko = không, đc = được): """${source}"""`,
       "Translate it into natural American English, the way a native speaker would actually say it, not a literal translation.",
-      'Return ONLY JSON in this exact shape: {"casual": "...", "neutral": "...", "notes": ["..."]}',
+      'Return ONLY JSON in this exact shape: {"casual": "...", "neutral": "...", "chunks": {"casual": ["..."], "neutral": ["..."]}, "notes": ["..."]}',
       ...common,
     ].join("\n");
   }
   return [
     "You are an American English speaking coach for a Vietnamese learner.",
     `The learner wrote this English sentence: """${source}"""`,
-    'Return ONLY JSON in this exact shape: {"vietnamese": "...", "casual": "...", "neutral": "...", "notes": ["..."]}',
+    'Return ONLY JSON in this exact shape: {"vietnamese": "...", "casual": "...", "neutral": "...", "chunks": {"casual": ["..."], "neutral": ["..."]}, "notes": ["..."]}',
     "- vietnamese: a natural Vietnamese translation of what the learner means.",
     "- casual / neutral: how a native American speaker would naturally say the same thing (keep it if already natural).",
     ...common.slice(0, 2),
     "- notes: 2-3 short notes in Vietnamese about mistakes or awkward parts in the learner's sentence and useful expressions (quote the English phrase). Each under 25 words.",
     common[3],
+    common[4],
   ].join("\n");
 }
 
