@@ -78,6 +78,16 @@ Distraction-free reader for TTS plus a Vietnamese → English practice mode.
 - Speak with browser voices (Edge Natural voices preferred), adjustable speed.
 - Recent translation history, click to replay.
 
+### 9. [MyMark](./tools/mymark/index.html)
+
+Private bookmark board, ported from a Next.js app to a single static tool.
+
+- Masonry grid (up to 5 columns) with thumbnails, tags, search, Newest / Most viewed sorting.
+- Vietnamese-friendly tag autocomplete (type without accents, Enter picks the top suggestion).
+- Password lock: data is encrypted with AES-GCM (PBKDF2 key) in localStorage — forgetting the password means resetting all bookmarks.
+- Change password, JSON export/import (merge, skips duplicate URLs).
+- Optional GitHub Gist sync: the encrypted vault lives in a secret gist, so a fresh/incognito browser only needs the password. The gist token is stored inside the encrypted vault.
+
 _(More tools coming soon...)_
 
 ## 🎨 UI/UX DNA: Dark Neumorphism
