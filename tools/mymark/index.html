@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MyMark - My Tools Hub</title>
+    <link rel="icon" type="image/x-icon" href="../../assets/img/favicon.png" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Shared Neumorphism DNA -->
+    <link rel="stylesheet" href="../../assets/css/neumorphism.css" />
+
+    <style>
+      /* ===== Riêng của MyMark (phần chung nằm ở neumorphism.css) ===== */
+      .hidden { display: none !important; }
+
+      /* ----- Tag chips (cùng kiểu Prompt Library) ----- */
+      .tag-chip {
+        display: inline-flex; align-items: center; gap: 0.35rem;
+        padding: 0.3rem 0.75rem; border-radius: 999px;
+        font-size: 0.75rem; font-weight: 600; color: #a1a1aa;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        cursor: pointer; transition: all 0.15s ease; white-space: nowrap;
+      }
+      .tag-chip:hover { color: #fff; border-color: rgba(248, 113, 113, 0.45); }
+      .tag-chip.active { color: #fff; background: rgba(239, 68, 68, 0.22); border-color: rgba(248, 113, 113, 0.6); }
+      .tag-chip .count { opacity: 0.55; font-weight: 500; }
+      .tag-chip.sm { padding: 0.12rem 0.55rem; font-size: 0.7rem; }
+
+      /* ----- Masonry: JS chia card vào từng cột ----- */
+      .masonry { display: flex; gap: 1.5rem; align-items: flex-start; }
+      .masonry-column { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.5rem; }
+
+      /* ----- Card bookmark ----- */
+      .bookmark-card {
+        position: relative; padding: 0.75rem; border-radius: 1.5rem;
+        transition: transform 0.3s ease;
+      }
+      .bookmark-card:hover { transform: translateY(-4px); }
+      .preview-frame {
+        display: block; overflow: hidden; border-radius: 1rem;
+        background: #141416; text-decoration: none;
+      }
+      .preview-frame img {
+        width: 100%; display: block; min-height: 80px; object-fit: cover;
+        transition: transform 0.35s ease, filter 0.35s ease;
+      }
+      .preview-frame:hover img { transform: scale(1.04); filter: brightness(1.08); }
+      .thumb-fallback {
+        aspect-ratio: 4 / 3; display: flex; align-items: center; justify-content: center;
+        font-size: 3rem; font-weight: 900; color: #3f3f46;
+        box-shadow: inset 6px 6px 12px #0a0a0b, inset -6px -6px 12px #26262b;
+        border-radius: 1rem;
+      }
+      .card-actions { position: absolute; top: 1.25rem; right: 1.25rem; opacity: 0; transition: 0.2s; }
+      .bookmark-card:hover .card-actions, .card-actions.show { opacity: 1; }
+      .kebab-btn {
+        width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer;
+        background: rgba(24, 24, 27, 0.85); color: #e4e4e7; backdrop-filter: blur(6px);
+      }
+      .kebab-btn:hover { color: #ef4444; }
+
+      /* ----- Dropdown menu ----- */
+      .dropdown {
+        position: absolute; top: calc(100% + 10px); right: 0; z-index: 40;
+        min-width: 190px; padding: 0.4rem; border-radius: 1rem; display: none;
+        background: #18181b; border: 1px solid rgba(255, 255, 255, 0.06);
+        box-shadow: 8px 8px 20px #0a0a0b, -4px -4px 12px #26262b;
+      }
+      .card-actions .dropdown { top: 42px; min-width: 140px; }
+      .dropdown.open { display: block; }
+      .dropdown button {
+        width: 100%; display: flex; align-items: center; gap: 0.6rem;
+        padding: 0.6rem 0.75rem; border-radius: 0.6rem; font-size: 0.85rem;
+        color: #a1a1aa; background: none; border: none; cursor: pointer; text-align: left;
+      }
+      .dropdown button:hover { color: #fff; background: rgba(255, 255, 255, 0.05); }
+      .dropdown button.danger:hover { color: #f87171; background: rgba(239, 68, 68, 0.12); }
+
+      /* ----- Ô nhập tag + gợi ý ----- */
+      .tag-input-wrap {
+        display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center;
+        padding: 0.55rem 0.75rem; min-height: 48px; cursor: text;
+      }
+      .tag-input-wrap input { flex: 1; min-width: 120px; background: none; border: none; outline: none; color: #e4e4e7; padding: 0.25rem; font-size: 0.9rem; }
+      .chip { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; color: #fff; background: rgba(239, 68, 68, 0.22); border: 1px solid rgba(248, 113, 113, 0.5); }
+      .chip button { background: none; border: none; color: #fca5a5; cursor: pointer; padding: 0; font-size: 0.7rem; }
+      .chip button:hover { color: #fff; }
+      .tag-suggest {
+        position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 20;
+        max-height: 220px; overflow-y: auto; padding: 0.4rem; border-radius: 1rem; display: none;
+        background: #18181b; border: 1px solid rgba(255, 255, 255, 0.06);
+        box-shadow: 8px 8px 20px #0a0a0b, -4px -4px 12px #26262b;
+      }
+      .tag-suggest.open { display: block; }
+      .tag-suggest .opt { display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.75rem; border-radius: 0.6rem; font-size: 0.85rem; color: #a1a1aa; cursor: pointer; }
+      .tag-suggest .opt .cnt { margin-left: auto; font-size: 0.72rem; color: #52525b; }
+      .tag-suggest .opt.hl { color: #fff; background: rgba(239, 68, 68, 0.18); }
+      .tag-suggest .opt.create { font-style: italic; }
+
+      .thumb-preview { margin-top: 0.75rem; border-radius: 1rem; overflow: hidden; }
+      .thumb-preview img { width: 100%; max-height: 180px; object-fit: cover; display: block; }
+
+      /* ----- Modal ----- */
+      .modal { position: fixed; inset: 0; z-index: 50; display: none; padding: 1rem; background: rgba(0, 0, 0, 0.7); overflow-y: auto; }
+      .modal.open { display: flex; }
+      /* margin:auto = căn giữa; popup dài thì cuộn cả lớp nền → gợi ý tag không bị cắt */
+      .modal > div { margin: auto; }
+
+      /* ----- Nút nổi: + và back to top ----- */
+      .fab-add {
+        position: fixed; right: 2rem; bottom: 2rem; z-index: 30; width: 60px; height: 60px; border-radius: 50%;
+        border: none; cursor: pointer; font-size: 1.4rem; color: #fff; background: #ef4444;
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.45), 6px 6px 14px #0a0a0b;
+        display: flex; align-items: center; justify-content: center; transition: 0.2s;
+      }
+      .fab-add:hover { transform: scale(1.08) rotate(90deg); }
+      .back-top {
+        position: fixed; right: 2.4rem; bottom: 6.6rem; z-index: 30; width: 46px; height: 46px; border-radius: 50%;
+        color: #a1a1aa; display: flex; align-items: center; justify-content: center; cursor: pointer;
+        opacity: 0; pointer-events: none; transform: translateY(10px);
+      }
+      .back-top.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+
+      /* ----- Toast (cùng kiểu Prompt Library) ----- */
+      .toast {
+        position: fixed; left: 50%; bottom: 1.5rem; z-index: 80; transform: translate(-50%, 1rem);
+        padding: 0.65rem 1.1rem; border-radius: 999px; background: rgba(24, 24, 27, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.1); color: #e4e4e7; font-size: 0.85rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); opacity: 0; pointer-events: none; transition: all 0.2s ease;
+        display: flex; align-items: center; gap: 0.5rem;
+      }
+      .toast.show { opacity: 1; transform: translate(-50%, 0); }
+      .toast i { color: #ef4444; }
+
+      /* ----- Màn hình khoá ----- */
+      .lock-screen { position: fixed; inset: 0; z-index: 70; display: none; align-items: center; justify-content: center; padding: 1rem; background: #18181b; }
+      body.locked .lock-screen { display: flex; }
+      body.locked #app, body.locked .fab-add, body.locked .back-top, body.locked .modal { display: none !important; }
+      .lock-screen.mode-setup .unlock-only, .lock-screen.mode-unlock .setup-only { display: none !important; }
+
+      @media (max-width: 640px) {
+        .masonry, .masonry-column { gap: 1rem; }
+        .card-actions { opacity: 1; }
+        .fab-add { right: 1.25rem; bottom: 1.25rem; }
+        .back-top { right: 1.65rem; bottom: 5.6rem; }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen p-3 sm:p-6 font-sans antialiased">
+    <!-- ===================== APP ===================== -->
+    <div id="app" class="neu-flat w-full max-w-[1600px] mx-auto p-4 sm:p-8 flex flex-col gap-5 sm:gap-6">
+      <!-- Header & Navigation -->
+      <div class="flex items-center justify-between gap-4 pb-2 flex-wrap">
+        <div class="flex items-center gap-4">
+          <a href="../../index.html" class="neu-btn w-10 h-10 flex items-center justify-center text-gray-500 hover:text-red-500 transition" title="Back to Hub">
+            <i class="fa-solid fa-arrow-left"></i>
+          </a>
+          <div>
+            <h1 class="text-xl sm:text-2xl font-extrabold tracking-widest text-red-500 uppercase flex items-center gap-2">
+              <i class="fa-solid fa-bookmark"></i> MyMark
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">Bookmark riêng tư, khoá bằng mật khẩu, lưu ngay trên trình duyệt.</p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+          <div class="relative w-full sm:w-72">
+            <input type="text" id="searchInput" class="neu-pressed w-full pl-10 pr-4 py-2 text-sm text-gray-200 outline-none rounded-xl" placeholder="Tìm bookmark... ( / )" />
+            <i class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
+          </div>
+          <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <button class="neu-btn neu-active px-3 sm:px-4 py-2 text-xs sm:text-sm whitespace-nowrap text-gray-300 font-medium flex items-center gap-2" data-sort="newest">
+              <i class="fa-regular fa-clock"></i> Mới nhất
+            </button>
+            <button class="neu-btn px-3 sm:px-4 py-2 text-xs sm:text-sm whitespace-nowrap text-gray-300 font-medium flex items-center gap-2" data-sort="popular">
+              <i class="fa-solid fa-arrow-trend-up"></i> Xem nhiều
+            </button>
+          <div class="relative flex items-center gap-2 ml-auto">
+            <button id="syncBadge" class="text-xs font-semibold px-2 py-2 whitespace-nowrap" title="Trạng thái đồng bộ"></button>
+            <button id="menuBtn" class="neu-btn px-4 py-2 text-sm text-gray-300 font-medium" title="Dữ liệu & mật khẩu">
+              <i class="fa-solid fa-gear"></i>
+            </button>
+            <button id="lockBtn" class="neu-btn px-4 py-2 text-sm text-gray-300 font-medium flex items-center gap-2" title="Khoá lại">
+              <i class="fa-solid fa-lock"></i> <span class="hidden sm:inline">Khoá</span>
+            </button>
+            <div class="dropdown" id="mainMenu">
+              <button data-act="sync"><i class="fa-solid fa-cloud"></i> Đồng bộ Gist</button>
+              <button data-act="change-pass"><i class="fa-solid fa-key"></i> Đổi mật khẩu</button>
+              <button data-act="export-json"><i class="fa-solid fa-file-export"></i> Xuất JSON</button>
+              <button data-act="import-json"><i class="fa-solid fa-file-import"></i> Nhập JSON</button>
+              <button data-act="clear-all" class="danger"><i class="fa-solid fa-trash"></i> Xóa toàn bộ</button>
+            </div>
+          </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tag filter bar + đếm kết quả -->
+      <div class="flex items-start justify-between gap-3">
+        <div id="tagBar" class="flex flex-wrap items-center gap-2"></div>
+        <span id="resultCount" class="text-sm font-semibold text-red-400 whitespace-nowrap pt-1"></span>
+      </div>
+
+      <!-- Grid bookmark -->
+      <div id="grid" class="masonry"></div>
+    </div>
+
+    <button class="back-top neu-btn" id="backTop" title="Lên đầu trang"><i class="fa-solid fa-arrow-up"></i></button>
+    <button class="fab-add" id="fabAdd" title="Thêm bookmark"><i class="fa-solid fa-plus"></i></button>
+
+    <!-- ===================== MODAL THÊM / SỬA ===================== -->
+    <div class="modal" id="bmModal">
+      <div class="neu-flat w-full max-w-xl p-5 sm:p-7 flex flex-col gap-4">
+        <div class="flex items-start justify-between gap-3">
+          <h2 id="modalTitle" class="text-lg font-bold text-white uppercase tracking-wider">Thêm bookmark</h2>
+          <button data-close class="neu-btn w-10 h-10 flex items-center justify-center text-gray-500"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="bmForm" autocomplete="off" class="flex flex-col gap-4">
+          <div>
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">URL trang web <span class="text-red-500">*</span></label>
+            <input type="url" id="fUrl" required class="neu-pressed w-full mt-2 p-3 text-gray-200 outline-none rounded-xl" placeholder="https://example.com" />
+          </div>
+          <div>
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Tiêu đề</label>
+            <input type="text" id="fTitle" class="neu-pressed w-full mt-2 p-3 text-gray-200 outline-none rounded-xl" placeholder="Tiêu đề" />
+          </div>
+          <div>
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">URL Thumbnail</label>
+            <input type="url" id="fThumb" class="neu-pressed w-full mt-2 p-3 text-gray-200 outline-none rounded-xl" placeholder="Dán link ảnh..." />
+            <div class="thumb-preview hidden" id="thumbPreview"><img alt="" /></div>
+          </div>
+          <div>
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Tags</label>
+            <div class="relative mt-2">
+              <div class="tag-input-wrap neu-pressed rounded-xl" id="tagWrap">
+                <input type="text" id="fTag" placeholder="Thêm tag..." />
+              </div>
+              <div class="tag-suggest" id="tagSuggest"></div>
+            </div>
+          </div>
+          <button type="submit" id="submitBtn" class="neu-btn w-full py-3 mt-2 text-red-500 font-bold uppercase tracking-wider">
+            Lưu lại
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ===================== MODAL ĐỔI MẬT KHẨU ===================== -->
+    <div class="modal" id="passModal">
+      <div class="neu-flat w-full max-w-md p-5 sm:p-7 flex flex-col gap-4">
+        <div class="flex items-start justify-between gap-3">
+          <h2 class="text-lg font-bold text-white uppercase tracking-wider">Đổi mật khẩu</h2>
+          <button data-close class="neu-btn w-10 h-10 flex items-center justify-center text-gray-500"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="passForm" autocomplete="off" class="flex flex-col gap-4">
+          <div>
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Mật khẩu hiện tại</label>
+            <input type="password" id="pOld" required class="neu-pressed w-full mt-2 p-3 text-gray-200 outline-none rounded-xl" />
+          </div>
+          <div>
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Mật khẩu mới</label>
+            <input type="password" id="pNew" required class="neu-pressed w-full mt-2 p-3 text-gray-200 outline-none rounded-xl" />
+          </div>
+          <div>
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Nhập lại mật khẩu mới</label>
+            <input type="password" id="pNew2" required class="neu-pressed w-full mt-2 p-3 text-gray-200 outline-none rounded-xl" />
+          </div>
+          <p id="passError" class="text-sm text-red-400 min-h-[1.25rem]"></p>
+          <button type="submit" class="neu-btn w-full py-3 text-red-500 font-bold uppercase tracking-wider">Đổi mật khẩu</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ===================== MODAL ĐỒNG BỘ GIST ===================== -->
+    <div class="modal" id="syncModal">
+      <div class="neu-flat w-full max-w-lg p-5 sm:p-7 flex flex-col gap-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold text-white uppercase tracking-wider">Đồng bộ Gist</h2>
+          </div>
+          <button data-close class="neu-btn w-10 h-10 flex items-center justify-center text-gray-500"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <p id="syncInfo" class="neu-pressed p-4 rounded-2xl text-sm text-gray-400 break-all"></p>
+
+        <form id="syncForm" autocomplete="off" class="flex flex-col gap-4">
+          <div>
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">GitHub token <a href="https://github.com/settings/tokens/new?scopes=gist&description=MyMark" target="_blank" rel="noopener" class="text-gray-600 hover:text-red-500 ml-1" title="Tạo token"><i class="fa-solid fa-arrow-up-right-from-square"></i></a></label>
+            <input type="password" id="sToken" class="neu-pressed w-full mt-2 p-3 text-gray-200 outline-none rounded-xl" placeholder="ghp_..." />
+          </div>
+          <div>
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Gist ID</label>
+            <input type="text" id="sGistId" class="neu-pressed w-full mt-2 p-3 text-gray-200 outline-none rounded-xl" placeholder="Gist ID" />
+          </div>
+          <p id="syncError" class="text-sm text-red-400 min-h-[1.25rem]"></p>
+          <button type="submit" id="syncSubmit" class="neu-btn w-full py-3 text-red-500 font-bold uppercase tracking-wider">Kết nối</button>
+        </form>
+
+        <div id="syncPaste" class="hidden neu-pressed p-4 rounded-2xl text-sm text-gray-400 flex flex-col gap-2">
+          <div class="flex items-center gap-2">
+            <code id="syncPasteLine" class="flex-1 text-xs text-emerald-400 break-all"></code>
+            <button id="syncCopy" class="neu-btn px-3 py-2 text-xs text-gray-300"><i class="fa-regular fa-copy"></i> Copy</button>
+          </div>
+        </div>
+
+        <button id="syncDisconnect" class="hidden text-xs text-gray-600 hover:text-red-500 underline self-center">Ngắt đồng bộ</button>
+      </div>
+    </div>
+
+    <!-- ===================== MÀN HÌNH KHOÁ ===================== -->
+    <div class="lock-screen" id="lockScreen">
+      <div class="neu-flat w-full max-w-sm p-6 sm:p-8 flex flex-col items-center text-center gap-4">
+        <div class="w-16 h-16 neu-btn flex items-center justify-center text-red-500 text-2xl">
+          <i class="fa-solid fa-lock"></i>
+        </div>
+        <div>
+          <h1 class="text-2xl font-extrabold tracking-widest text-white uppercase">My<span class="text-red-500">Mark</span></h1>
+          <p id="lockSub" class="text-sm text-gray-500 mt-2"></p>
+        </div>
+        <form id="lockForm" autocomplete="off" class="w-full flex flex-col gap-3 mt-2">
+          <input type="password" id="lPass" required placeholder="Mật khẩu" class="neu-pressed w-full p-3 text-gray-200 outline-none rounded-xl" />
+          <input type="password" id="lPass2" placeholder="Nhập lại mật khẩu" class="setup-only neu-pressed w-full p-3 text-gray-200 outline-none rounded-xl" />
+          <p id="lockError" class="text-sm text-red-400 text-left min-h-[1.25rem]"></p>
+          <button type="submit" id="lockSubmit" class="neu-btn w-full py-3 text-red-500 font-bold uppercase tracking-wider">Mở khoá</button>
+        </form>
+        <button id="forgotBtn" class="unlock-only text-xs text-gray-600 hover:text-red-500 underline transition">Quên mật khẩu?</button>
+        <a href="../../index.html" class="text-xs text-gray-600 hover:text-red-500 transition"><i class="fa-solid fa-arrow-left"></i> Về Hub</a>
+      </div>
+    </div>
+
+    <input type="file" id="importFile" accept=".json,application/json" class="hidden" />
+    <div class="toast" id="toast"></div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
