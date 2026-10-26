@@ -78,7 +78,7 @@ function saveBookmarks() {
    ========================================================= */
 // 👉 Sau khi kết nối lần đầu, dán ID gist vào đây rồi push,
 //    để incognito (localStorage trống) vẫn biết tải két ở đâu.
-const SYNC_GIST_ID = '';
+const SYNC_GIST_ID = '18feb3f4bb40459e199ce0247f9ad767';
 
 const GIST_FILE = 'mymark-vault.json';
 const GIST_ID_KEY = 'mymark_gist_id';
