@@ -34,20 +34,63 @@
       .tag-chip .count { opacity: 0.55; font-weight: 500; }
       .tag-chip.sm { padding: 0.12rem 0.55rem; font-size: 0.7rem; }
 
-      /* ----- Masonry: JS chia card vào từng cột ----- */
-      .masonry { display: flex; gap: 1.5rem; align-items: flex-start; }
-      .masonry-column { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.5rem; }
+      /* ===== LAYOUT LAI: bố cục Pinterest + màu/nút của hub ===== */
+      :root { --side-w: 72px; --side-w-open: 250px; --header-h: 72px; }
 
-      /* ----- Card bookmark ----- */
+      /* Sidebar */
+      .sidebar-area {
+        position: fixed; top: 0; left: 0; bottom: 0; z-index: 45; width: var(--side-w);
+        padding: 16px 12px; display: flex; flex-direction: column; gap: 6px; overflow: hidden;
+        background: #141416; box-shadow: 6px 0 16px #0a0a0b;
+        transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s;
+      }
+      .sidebar-area:hover { width: var(--side-w-open); box-shadow: 12px 0 40px rgba(0, 0, 0, 0.7); }
+      .sidebar-area .label { opacity: 0; transition: opacity 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .sidebar-area:hover .label { opacity: 1; }
+      .side-item, .brand, .side-title, .tag-cloud .tag {
+        display: flex; align-items: center; gap: 14px; min-height: 44px; padding: 0 14px;
+        border-radius: 12px; white-space: nowrap; flex-shrink: 0;
+      }
+      .side-item { color: #71717a; text-decoration: none; transition: 0.2s; }
+      .side-item:hover { color: #ef4444; background: rgba(255, 255, 255, 0.04); }
+      .brand { font-weight: 900; letter-spacing: 0.15em; color: #fff; font-size: 1rem; margin: 4px 0 6px; }
+      .brand > i { color: #ef4444; font-size: 1.2rem; width: 16px; text-align: center; }
+      .side-item > i, .tag-cloud .tag > i { width: 16px; text-align: center; flex-shrink: 0; }
+      .side-title { min-height: 28px; font-size: 0.7rem; font-weight: 700; color: #52525b; text-transform: uppercase; letter-spacing: 0.12em; border-top: 1px solid rgba(255,255,255,0.05); border-radius: 0; margin-top: 4px; padding-top: 10px; }
+      .tag-cloud { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 4px; padding-bottom: 20px; }
+      .tag-cloud::-webkit-scrollbar { width: 3px; }
+      .tag-cloud .tag { color: #a1a1aa; cursor: pointer; font-size: 0.88rem; transition: 0.15s; }
+      .tag-cloud .tag:hover { color: #fff; background: rgba(255, 255, 255, 0.05); }
+      .tag-cloud .tag.active { color: #fff; background: rgba(239, 68, 68, 0.2); box-shadow: inset 3px 0 0 #ef4444; }
+      .tag-cloud .tag.active > i { color: #ef4444; }
+      .tag-cloud .tag .count { margin-left: auto; font-size: 0.72rem; color: #71717a; }
+
+      /* Header + toolbar */
+      .main-header {
+        position: fixed; top: 0; right: 0; left: var(--side-w); z-index: 40; height: var(--header-h);
+        padding: 0 32px; display: flex; align-items: center; gap: 16px;
+        background: rgba(24, 24, 27, 0.9); backdrop-filter: blur(10px);
+      }
+      .mobile-back { display: none !important; }
+      .content-area { margin-left: var(--side-w); padding: calc(var(--header-h) + 4px) 32px 40px; }
+      .content-toolbar {
+        position: sticky; top: var(--header-h); z-index: 30; display: flex; align-items: center; gap: 12px;
+        padding: 10px 0 20px; background: rgba(24, 24, 27, 0.9); backdrop-filter: blur(10px);
+      }
+      .mobile-tags { display: none; gap: 8px; overflow-x: auto; padding-bottom: 14px; scrollbar-width: none; }
+      .mobile-tags::-webkit-scrollbar { display: none; }
+
+      /* ----- Masonry: JS chia card vào từng cột ----- */
+      .masonry { display: flex; gap: 16px; align-items: flex-start; }
+      .masonry-column { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+
+      /* ----- Card phẳng kiểu Pinterest ----- */
       .bookmark-card {
-        position: relative; padding: 0.75rem; border-radius: 1.5rem;
-        transition: transform 0.3s ease;
+        position: relative; overflow: hidden; border-radius: 16px; background: #222226;
+        border: 1px solid rgba(255, 255, 255, 0.04); transition: transform 0.2s ease, box-shadow 0.2s ease;
       }
-      .bookmark-card:hover { transform: translateY(-4px); }
-      .preview-frame {
-        display: block; overflow: hidden; border-radius: 1rem;
-        background: #141416; text-decoration: none;
-      }
+      .bookmark-card:hover { transform: translateY(-4px); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55); }
+      .preview-frame { display: block; overflow: hidden; background: #1c1c1f; text-decoration: none; }
       .preview-frame img {
         width: 100%; display: block; min-height: 80px; object-fit: cover;
         transition: transform 0.35s ease, filter 0.35s ease;
@@ -55,11 +98,9 @@
       .preview-frame:hover img { transform: scale(1.04); filter: brightness(1.08); }
       .thumb-fallback {
         aspect-ratio: 4 / 3; display: flex; align-items: center; justify-content: center;
-        font-size: 3rem; font-weight: 900; color: #3f3f46;
-        box-shadow: inset 6px 6px 12px #0a0a0b, inset -6px -6px 12px #26262b;
-        border-radius: 1rem;
+        font-size: 3rem; font-weight: 900; color: #3f3f46; background: linear-gradient(135deg, #1e1e21, #2a2a2f);
       }
-      .card-actions { position: absolute; top: 1.25rem; right: 1.25rem; opacity: 0; transition: 0.2s; }
+      .card-actions { position: absolute; top: 0.6rem; right: 0.6rem; opacity: 0; transition: 0.2s; }
       .bookmark-card:hover .card-actions, .card-actions.show { opacity: 1; }
       .kebab-btn {
         width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer;
@@ -143,74 +184,77 @@
       /* ----- Màn hình khoá ----- */
       .lock-screen { position: fixed; inset: 0; z-index: 70; display: none; align-items: center; justify-content: center; padding: 1rem; background: #18181b; }
       body.locked .lock-screen { display: flex; }
-      body.locked #app, body.locked .fab-add, body.locked .back-top, body.locked .modal { display: none !important; }
+      body.locked #app, body.locked .sidebar-area, body.locked .fab-add, body.locked .back-top, body.locked .modal { display: none !important; }
       .lock-screen.mode-setup .unlock-only, .lock-screen.mode-unlock .setup-only { display: none !important; }
 
-      @media (max-width: 640px) {
-        .masonry, .masonry-column { gap: 1rem; }
+      @media (max-width: 768px) {
+        .sidebar-area { display: none; }
+        .main-header { left: 0; padding: 0 16px; gap: 10px; }
+        .mobile-back { display: flex !important; }
+        .content-area { margin-left: 0; padding: calc(var(--header-h) + 4px) 16px 30px; }
+        .mobile-tags { display: flex; }
+        .masonry, .masonry-column { gap: 12px; }
         .card-actions { opacity: 1; }
         .fab-add { right: 1.25rem; bottom: 1.25rem; }
         .back-top { right: 1.65rem; bottom: 5.6rem; }
       }
     </style>
   </head>
-  <body class="min-h-screen p-3 sm:p-6 font-sans antialiased">
+  <body class="min-h-screen font-sans antialiased">
+    <!-- ===================== SIDEBAR (kiểu Pinterest: thu gọn, rê chuột thì bung) ===================== -->
+    <aside class="sidebar-area" id="sidebar">
+      <a href="../../index.html" class="side-item" title="Về Hub">
+        <i class="fa-solid fa-arrow-left"></i><span class="label">Về Hub</span>
+      </a>
+      <div class="brand">
+        <i class="fa-solid fa-bookmark"></i><span class="label">MY<span class="text-red-500">MARK</span></span>
+      </div>
+      <div class="side-title"><span class="label">Tags</span></div>
+      <div class="tag-cloud" id="tagCloud"></div>
+    </aside>
+
     <!-- ===================== APP ===================== -->
-    <div id="app" class="neu-flat w-full max-w-[1600px] mx-auto p-4 sm:p-8 flex flex-col gap-5 sm:gap-6">
-      <!-- Header & Navigation -->
-      <div class="flex items-center justify-between gap-4 pb-2 flex-wrap">
-        <div class="flex items-center gap-4">
-          <a href="../../index.html" class="neu-btn w-10 h-10 flex items-center justify-center text-gray-500 hover:text-red-500 transition" title="Back to Hub">
-            <i class="fa-solid fa-arrow-left"></i>
-          </a>
-          <div>
-            <h1 class="text-xl sm:text-2xl font-extrabold tracking-widest text-red-500 uppercase flex items-center gap-2">
-              <i class="fa-solid fa-bookmark"></i> MyMark
-            </h1>
-            <p class="text-sm text-gray-500 mt-1">Bookmark riêng tư, khoá bằng mật khẩu, lưu ngay trên trình duyệt.</p>
+    <div id="app">
+      <header class="main-header">
+        <a href="../../index.html" class="mobile-back neu-btn w-10 h-10 flex items-center justify-center text-gray-500 hover:text-red-500" title="Về Hub">
+          <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <div class="relative flex-1 max-w-xl">
+          <input type="text" id="searchInput" class="neu-pressed w-full pl-11 pr-4 py-2.5 text-sm text-gray-200 outline-none rounded-full" placeholder="Tìm bookmark... ( / )" />
+          <i class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
+        </div>
+        <div class="relative flex items-center gap-2 ml-auto">
+          <button id="syncBadge" class="text-xs font-semibold px-2 py-2 whitespace-nowrap" title="Trạng thái đồng bộ"></button>
+          <button id="menuBtn" class="neu-btn w-10 h-10 flex items-center justify-center text-gray-400" title="Dữ liệu & mật khẩu">
+            <i class="fa-solid fa-gear"></i>
+          </button>
+          <button id="lockBtn" class="neu-btn h-10 px-4 text-sm text-gray-400 font-medium flex items-center gap-2" title="Khoá lại">
+            <i class="fa-solid fa-lock"></i> <span class="hidden sm:inline">Khoá</span>
+          </button>
+          <div class="dropdown" id="mainMenu">
+            <button data-act="sync"><i class="fa-solid fa-cloud"></i> Đồng bộ Gist</button>
+            <button data-act="change-pass"><i class="fa-solid fa-key"></i> Đổi mật khẩu</button>
+            <button data-act="export-json"><i class="fa-solid fa-file-export"></i> Xuất JSON</button>
+            <button data-act="import-json"><i class="fa-solid fa-file-import"></i> Nhập JSON</button>
+            <button data-act="clear-all" class="danger"><i class="fa-solid fa-trash"></i> Xóa toàn bộ</button>
           </div>
         </div>
+      </header>
 
-        <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-          <div class="relative w-full sm:w-72">
-            <input type="text" id="searchInput" class="neu-pressed w-full pl-10 pr-4 py-2 text-sm text-gray-200 outline-none rounded-xl" placeholder="Tìm bookmark... ( / )" />
-            <i class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
-          </div>
-          <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
-            <button class="neu-btn neu-active px-3 sm:px-4 py-2 text-xs sm:text-sm whitespace-nowrap text-gray-300 font-medium flex items-center gap-2" data-sort="newest">
-              <i class="fa-regular fa-clock"></i> Mới nhất
-            </button>
-            <button class="neu-btn px-3 sm:px-4 py-2 text-xs sm:text-sm whitespace-nowrap text-gray-300 font-medium flex items-center gap-2" data-sort="popular">
-              <i class="fa-solid fa-arrow-trend-up"></i> Xem nhiều
-            </button>
-          <div class="relative flex items-center gap-2 ml-auto">
-            <button id="syncBadge" class="text-xs font-semibold px-2 py-2 whitespace-nowrap" title="Trạng thái đồng bộ"></button>
-            <button id="menuBtn" class="neu-btn px-4 py-2 text-sm text-gray-300 font-medium" title="Dữ liệu & mật khẩu">
-              <i class="fa-solid fa-gear"></i>
-            </button>
-            <button id="lockBtn" class="neu-btn px-4 py-2 text-sm text-gray-300 font-medium flex items-center gap-2" title="Khoá lại">
-              <i class="fa-solid fa-lock"></i> <span class="hidden sm:inline">Khoá</span>
-            </button>
-            <div class="dropdown" id="mainMenu">
-              <button data-act="sync"><i class="fa-solid fa-cloud"></i> Đồng bộ Gist</button>
-              <button data-act="change-pass"><i class="fa-solid fa-key"></i> Đổi mật khẩu</button>
-              <button data-act="export-json"><i class="fa-solid fa-file-export"></i> Xuất JSON</button>
-              <button data-act="import-json"><i class="fa-solid fa-file-import"></i> Nhập JSON</button>
-              <button data-act="clear-all" class="danger"><i class="fa-solid fa-trash"></i> Xóa toàn bộ</button>
-            </div>
-          </div>
-          </div>
+      <div class="content-area">
+        <div class="content-toolbar">
+          <button class="neu-btn neu-active px-4 py-2 text-xs sm:text-sm whitespace-nowrap text-gray-300 font-semibold flex items-center gap-2" data-sort="newest">
+            <i class="fa-regular fa-clock"></i> Mới nhất
+          </button>
+          <button class="neu-btn px-4 py-2 text-xs sm:text-sm whitespace-nowrap text-gray-300 font-semibold flex items-center gap-2" data-sort="popular">
+            <i class="fa-solid fa-arrow-trend-up"></i> Xem nhiều
+          </button>
+          <span id="resultCount" class="ml-auto text-xs sm:text-sm font-semibold text-red-400 whitespace-nowrap"></span>
         </div>
+        <!-- Tag chip: chỉ hiện trên mobile (desktop dùng sidebar) -->
+        <div id="tagBar" class="mobile-tags"></div>
+        <div id="grid" class="masonry"></div>
       </div>
-
-      <!-- Tag filter bar + đếm kết quả -->
-      <div class="flex items-start justify-between gap-3">
-        <div id="tagBar" class="flex flex-wrap items-center gap-2"></div>
-        <span id="resultCount" class="text-sm font-semibold text-red-400 whitespace-nowrap pt-1"></span>
-      </div>
-
-      <!-- Grid bookmark -->
-      <div id="grid" class="masonry"></div>
     </div>
 
     <button class="back-top neu-btn" id="backTop" title="Lên đầu trang"><i class="fa-solid fa-arrow-up"></i></button>

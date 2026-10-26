@@ -40,6 +40,7 @@ async function writeVault(data, key, saltB64) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(data)));
   localStorage.setItem(VAULT_KEY, JSON.stringify({ v: 1, salt: saltB64, iv: toB64(iv), data: toB64(cipher) }));
+  localStorage.setItem(DIRTY_KEY, '1');   // máy này có thay đổi chưa lên gist
   schedulePush();
 }
 
@@ -82,6 +83,7 @@ const SYNC_GIST_ID = '18feb3f4bb40459e199ce0247f9ad767';
 
 const GIST_FILE = 'mymark-vault.json';
 const GIST_ID_KEY = 'mymark_gist_id';
+const DIRTY_KEY = 'mymark_dirty';   // '1' = bản trên máy mới hơn gist, đừng để gist ghi đè
 const GH_API = 'https://api.github.com/gists';
 
 function getGistId() {
@@ -99,6 +101,7 @@ async function pullVault() {
   const v = JSON.parse(content);
   if (!v.salt || !v.data) throw new Error('Két hỏng');
   localStorage.setItem(VAULT_KEY, content);
+  localStorage.removeItem(DIRTY_KEY);
 }
 
 // Badge trạng thái trên header
@@ -137,6 +140,7 @@ async function pushVault() {
       body: JSON.stringify({ files: { [GIST_FILE]: { content: localStorage.getItem(VAULT_KEY) } } }),
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
+    localStorage.removeItem(DIRTY_KEY);
     setSyncStatus('ok');
   } catch (e) {
     console.warn('Push gist lỗi', e);
@@ -212,7 +216,7 @@ function getVisible() {
 }
 
 /* =========================================================
-   5. RENDER TAG BAR (chip giống Prompt Library)
+   5. RENDER TAGS (sidebar desktop + chip ngang trên mobile)
    ========================================================= */
 function renderTags() {
   const counts = getTagCounts();
@@ -224,6 +228,13 @@ function renderTags() {
   const items = [{ key: 'all', label: 'Tất cả', count: bookmarks.length, icon: 'fa-layer-group' },
                  ...tags.map(t => ({ key: t, label: t, count: counts[t], icon: 'fa-hashtag' }))];
 
+  // Sidebar (desktop)
+  $('#tagCloud').innerHTML = items.map(it =>
+    `<div class="tag ${state.tag === it.key ? 'active' : ''}" data-tag="${esc(it.key)}" title="${esc(it.label)} (${it.count})">
+       <i class="fa-solid ${it.icon}"></i><span class="label">${esc(it.label)}</span><span class="count label">${it.count}</span>
+     </div>`).join('');
+
+  // Chip ngang (mobile)
   $('#tagBar').innerHTML = items.map(it =>
     `<span class="tag-chip ${state.tag === it.key ? 'active' : ''}" data-tag="${esc(it.key)}">
        <i class="fa-solid ${it.icon}"></i>${esc(it.label)} <span class="count">${it.count}</span>
@@ -256,9 +267,9 @@ function cardHTML(b) {
             onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'thumb-fallback',textContent:'${letter}'}))">`
     : `<div class="thumb-fallback">${letter}</div>`;
   return `
-  <div class="bookmark-card neu-flat" data-id="${b.id}">
+  <div class="bookmark-card" data-id="${b.id}">
     <a class="preview-frame" href="${esc(b.url)}" target="_blank" rel="noopener noreferrer" data-open>${thumb}</a>
-    <div class="px-2 pt-4 pb-2">
+    <div class="px-4 pt-3 pb-4">
       <h3 class="text-white font-bold text-[0.95rem] leading-snug break-words">${esc(b.title || domain)}</h3>
       <a class="block text-xs text-gray-500 hover:text-red-400 mt-1 truncate" href="${esc(b.url)}" target="_blank" rel="noopener noreferrer" data-open>
         <i class="fa-solid fa-link text-[0.65rem]"></i> ${esc(domain)}
@@ -628,6 +639,7 @@ $('#lockForm').addEventListener('submit', async (e) => {
       localStorage.removeItem(LEGACY_KEY);
       toast(legacy.length ? `Đã khoá ${legacy.length} bookmark cũ` : 'Đã tạo mật khẩu');
       unlockDone();
+      if (getGistId()) openSyncModal(true);
     } catch {
       err.textContent = 'Trình duyệt đang chặn lưu trữ (localStorage).';
     }
@@ -666,19 +678,23 @@ $('#forgotBtn').addEventListener('click', () => {
 });
 
 /* ----- Modal Đồng bộ Gist ----- */
-function openSyncModal() {
+function openSyncModal(afterReset = false) {
+  syncAfterReset = afterReset;
   $('#sToken').value = '';
   $('#sGistId').value = getGistId();
   $('#syncError').textContent = '';
   renderSyncInfo();
   $('#syncModal').classList.add('open');
 }
+let syncAfterReset = false;
 function renderSyncInfo() {
   const id = getGistId();
   const connected = syncToken && id;
   $('#syncInfo').innerHTML = connected
     ? `<i class="fa-solid fa-circle-check text-emerald-400"></i> Đang đồng bộ với gist <code class="text-gray-300">${esc(id)}</code>`
-    : `<i class="fa-solid fa-circle-info text-gray-500"></i> Chưa đồng bộ`;
+    : syncAfterReset && id
+      ? `<i class="fa-solid fa-rotate text-amber-400"></i> Dán token để ghi đè két cũ trên Gist`
+      : `<i class="fa-solid fa-circle-info text-gray-500"></i> Chưa đồng bộ`;
   $('#syncDisconnect').classList.toggle('hidden', !connected);
   // Nhắc dán ID vào script.js nếu chưa làm
   const needPaste = id && !SYNC_GIST_ID;
@@ -712,6 +728,7 @@ $('#syncForm').addEventListener('submit', async (e) => {
     saveBookmarks();                 // khoá token vào két + đẩy lên gist
     $('#sGistId').value = id;
     $('#sToken').value = '';
+    syncAfterReset = false;
     renderSyncInfo();
     toast('Đã kết nối Gist', 'fa-cloud');
   } catch (ex) {
@@ -769,7 +786,9 @@ if (!window.crypto?.subtle) {
 
 async function boot() {
   // Có gist → tải bản mới nhất về trước, rồi mới hỏi pass
-  if (getGistId()) {
+  let dirty = false;
+  try { dirty = localStorage.getItem(DIRTY_KEY) === '1' && !!readVault(); } catch {}
+  if (getGistId() && !dirty) {
     showLock('unlock');
     $('#lockSub').innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Đang tải két từ Gist...';
     $('#lockSubmit').disabled = true;
