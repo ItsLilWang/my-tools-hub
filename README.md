@@ -88,6 +88,14 @@ Private bookmark board, ported from a Next.js app to a single static tool.
 - Change password, JSON export/import (merge, skips duplicate URLs).
 - Optional GitHub Gist sync: the encrypted vault lives in a secret gist, so a fresh/incognito browser only needs the password. The gist token is stored inside the encrypted vault.
 
+### 10. [Idea Bank](./tools/idea-bank/index.html)
+
+Collect episode ideas from memes and funny posts.
+
+- Each idea card holds one or more source links (auto icon for X, Reddit, TikTok, YouTube…) plus a quick memo.
+- Tick ideas to copy only those, or copy every active idea as one formatted block for Claude.
+- Mark ideas as Used to archive them; autosaves in localStorage with JSON export/import.
+
 _(More tools coming soon...)_
 
 ## 🎨 UI/UX DNA: Dark Neumorphism

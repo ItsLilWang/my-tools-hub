@@ -16,6 +16,9 @@ my-tools-hub/
 │   ├── password-generator/
 │   │   ├── index.html
 │   │   └── script.js
+│   ├── idea-bank/
+│   │   ├── index.html
+│   │   └── script.js
 │   ├── mymark/
 │   │   ├── index.html
 │   │   └── script.js
