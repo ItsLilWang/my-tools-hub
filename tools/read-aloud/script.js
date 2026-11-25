@@ -613,7 +613,7 @@ function renderHistory() {
     icon.className = "fa-solid fa-play text-gray-500 text-xs mt-1.5 shrink-0";
 
     const textBox = document.createElement("div");
-    textBox.className = "flex flex-col gap-0.5 min-w-0";
+    textBox.className = "flex flex-col gap-0.5 min-w-0 flex-1";
 
     const enLine = document.createElement("span");
     enLine.className = "text-sm text-gray-200 break-words";
@@ -624,7 +624,22 @@ function renderHistory() {
     viLine.textContent = item.vi;
 
     textBox.append(enLine, viLine);
-    li.append(icon, textBox);
+
+    // Nút xoá riêng từng dòng
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "history-del shrink-0 text-gray-600 text-xs px-1.5 py-1 rounded-md";
+    delBtn.title = "Xoá dòng này";
+    delBtn.setAttribute("aria-label", "Xoá dòng này khỏi lịch sử");
+    delBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+    delBtn.addEventListener("click", (e) => {
+      e.stopPropagation(); // không kích hoạt nghe lại
+      historyItems = historyItems.filter((h) => h !== item);
+      store.set("ra_history", historyItems);
+      renderHistory();
+    });
+
+    li.append(icon, textBox, delBtn);
 
     // Bấm vào: đưa câu lên khung chính (đúng chiều dịch cũ) và đọc lại
     li.addEventListener("click", () => {

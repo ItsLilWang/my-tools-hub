@@ -181,6 +181,19 @@
         background: #ef4444;
         box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
       }
+      /* Nút xoá từng dòng lịch sử: mờ, hover dòng thì hiện rõ */
+      .history-del {
+        opacity: 0.4;
+        transition: all 0.15s ease;
+      }
+      .history-item:hover .history-del {
+        opacity: 1;
+      }
+      .history-del:hover,
+      .history-del:focus-visible {
+        color: #ef4444;
+        opacity: 1;
+      }
       .history-item.is-playing .fa-play,
       .history-item:hover .fa-play {
         color: #ef4444;
