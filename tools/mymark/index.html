@@ -224,7 +224,7 @@
           <i class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
         </div>
         <div class="relative flex items-center gap-2 ml-auto">
-          <button id="syncBadge" class="text-xs font-semibold px-2 py-2 whitespace-nowrap" title="Trạng thái đồng bộ"></button>
+          <button id="syncBadge" class="text-xs font-semibold px-2 py-2 whitespace-nowrap" title="Xuất .dat"></button>
           <button id="menuBtn" class="neu-btn w-10 h-10 flex items-center justify-center text-gray-400" title="Dữ liệu & mật khẩu">
             <i class="fa-solid fa-gear"></i>
           </button>
@@ -232,10 +232,9 @@
             <i class="fa-solid fa-lock"></i> <span class="hidden sm:inline">Khoá</span>
           </button>
           <div class="dropdown" id="mainMenu">
-            <button data-act="sync"><i class="fa-solid fa-cloud"></i> Đồng bộ Gist</button>
             <button data-act="change-pass"><i class="fa-solid fa-key"></i> Đổi mật khẩu</button>
-            <button data-act="export-json"><i class="fa-solid fa-file-export"></i> Xuất JSON</button>
-            <button data-act="import-json"><i class="fa-solid fa-file-import"></i> Nhập JSON</button>
+            <button data-act="export-dat"><i class="fa-solid fa-file-export"></i> Xuất .dat</button>
+            <button data-act="import"><i class="fa-solid fa-file-import"></i> Nhập .json / .dat</button>
             <button data-act="clear-all" class="danger"><i class="fa-solid fa-trash"></i> Xóa toàn bộ</button>
           </div>
         </div>
@@ -323,39 +322,19 @@
       </div>
     </div>
 
-    <!-- ===================== MODAL ĐỒNG BỘ GIST ===================== -->
-    <div class="modal" id="syncModal">
-      <div class="neu-flat w-full max-w-lg p-5 sm:p-7 flex flex-col gap-4">
+    <!-- ===================== MODAL HỎI PIN (khi nhập .dat khác PIN) ===================== -->
+    <div class="modal" id="pinModal">
+      <div class="neu-flat w-full max-w-sm p-5 sm:p-7 flex flex-col gap-4">
         <div class="flex items-start justify-between gap-3">
-          <div>
-            <h2 class="text-lg font-bold text-white uppercase tracking-wider">Đồng bộ Gist</h2>
-          </div>
+          <h2 class="text-lg font-bold text-white uppercase tracking-wider">PIN của file</h2>
           <button data-close class="neu-btn w-10 h-10 flex items-center justify-center text-gray-500"><i class="fa-solid fa-xmark"></i></button>
         </div>
-
-        <p id="syncInfo" class="neu-pressed p-4 rounded-2xl text-sm text-gray-400 break-all"></p>
-
-        <form id="syncForm" autocomplete="off" class="flex flex-col gap-4">
-          <div>
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">GitHub token <a href="https://github.com/settings/tokens/new?scopes=gist&description=MyMark" target="_blank" rel="noopener" class="text-gray-600 hover:text-red-500 ml-1" title="Tạo token"><i class="fa-solid fa-arrow-up-right-from-square"></i></a></label>
-            <input type="password" id="sToken" class="neu-pressed w-full mt-2 p-3 text-gray-200 outline-none rounded-xl" placeholder="ghp_..." />
-          </div>
-          <div>
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Gist ID</label>
-            <input type="text" id="sGistId" class="neu-pressed w-full mt-2 p-3 text-gray-200 outline-none rounded-xl" placeholder="Gist ID" />
-          </div>
-          <p id="syncError" class="text-sm text-red-400 min-h-[1.25rem]"></p>
-          <button type="submit" id="syncSubmit" class="neu-btn w-full py-3 text-red-500 font-bold uppercase tracking-wider">Kết nối</button>
+        <p class="text-sm text-gray-500">File .dat này khoá bằng PIN khác PIN đang dùng.</p>
+        <form id="pinForm" autocomplete="off" class="flex flex-col gap-3">
+          <input type="password" id="pinInput" required placeholder="PIN" class="neu-pressed w-full p-3 text-gray-200 outline-none rounded-xl" />
+          <p id="pinError" class="text-sm text-red-400 min-h-[1.25rem]"></p>
+          <button type="submit" class="neu-btn w-full py-3 text-red-500 font-bold uppercase tracking-wider">Mở &amp; nhập</button>
         </form>
-
-        <div id="syncPaste" class="hidden neu-pressed p-4 rounded-2xl text-sm text-gray-400 flex flex-col gap-2">
-          <div class="flex items-center gap-2">
-            <code id="syncPasteLine" class="flex-1 text-xs text-emerald-400 break-all"></code>
-            <button id="syncCopy" class="neu-btn px-3 py-2 text-xs text-gray-300"><i class="fa-regular fa-copy"></i> Copy</button>
-          </div>
-        </div>
-
-        <button id="syncDisconnect" class="hidden text-xs text-gray-600 hover:text-red-500 underline self-center">Ngắt đồng bộ</button>
       </div>
     </div>
 
@@ -380,7 +359,7 @@
       </div>
     </div>
 
-    <input type="file" id="importFile" accept=".json,application/json" class="hidden" />
+    <input type="file" id="importFile" accept=".json,.dat,application/json" class="hidden" />
     <div class="toast" id="toast"></div>
 
     <script src="script.js"></script>

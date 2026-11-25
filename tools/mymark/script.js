@@ -27,21 +27,19 @@ function readVault() {
   try { return JSON.parse(localStorage.getItem(VAULT_KEY)); } catch { return null; }
 }
 
-// Thứ được nhét vào két: bookmark + token Gist (token cũng được khoá luôn)
-let syncToken = '';
-function payload() { return { bookmarks, syncToken }; }
-function applyPayload(d) {
-  if (Array.isArray(d)) { bookmarks = d; syncToken = ''; }          // két kiểu cũ (P2)
-  else { bookmarks = d.bookmarks || []; syncToken = d.syncToken || ''; }
-}
+// Thứ được nhét vào két: chỉ có bookmark (bản cũ có token gist → giờ bỏ luôn)
+function payload() { return { bookmarks }; }
+function applyPayload(d) { bookmarks = Array.isArray(d) ? d : (d.bookmarks || []); }
 
-// Khoá data lại rồi cất vào localStorage (mỗi lần lưu dùng iv mới), sau đó hẹn đẩy lên Gist
+let currentPin = '';   // PIN đang dùng, chỉ nằm trong RAM — để Nhập .dat khỏi hỏi lại
+
+// Khoá data lại rồi cất vào localStorage (mỗi lần lưu dùng iv mới)
+// savedAt = giờ lưu, dùng để so "két nào mới hơn" giữa máy và repo
 async function writeVault(data, key, saltB64) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(data)));
-  localStorage.setItem(VAULT_KEY, JSON.stringify({ v: 1, salt: saltB64, iv: toB64(iv), data: toB64(cipher) }));
-  localStorage.setItem(DIRTY_KEY, '1');   // máy này có thay đổi chưa lên gist
-  schedulePush();
+  localStorage.setItem(VAULT_KEY, JSON.stringify({ v: 2, savedAt: Date.now(), salt: saltB64, iv: toB64(iv), data: toB64(cipher) }));
+  updateExportBadge();
 }
 
 // Tạo két mới bằng password mới (dùng cho: tạo lần đầu + đổi pass)
@@ -52,9 +50,8 @@ async function createVault(password, data) {
   cryptoKey = key;
 }
 
-// Thử mở két. Sai pass → AES-GCM báo lỗi → trả về null
-async function openVault(password) {
-  const vault = readVault();
+// Thử mở két (mặc định két trên máy, hoặc két từ file .dat). Sai pass → AES-GCM báo lỗi → null
+async function openVault(password, vault = readVault()) {
   try {
     const key = await deriveKey(password, fromB64(vault.salt));
     const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(vault.iv) }, key, fromB64(vault.data));
@@ -72,86 +69,58 @@ function saveBookmarks() {
 }
 
 /* =========================================================
-   1b. ĐỒNG BỘ GIST (để dùng incognito không phải import/export)
-   - Két đã mã hoá được cất lên 1 secret gist trên GitHub
-   - Mở tool → tải két từ gist về → nhập pass là xong
-   - Token ghi gist nằm TRONG két, nên chỉ ai có pass mới ghi được
+   1b. KÉT Ở NHÀ = file vault.dat trong repo
+   Ví dụ đời thường:
+   - localStorage = cái túi mang theo (mỗi trình duyệt 1 túi, incognito thì túi rỗng)
+   - vault.dat    = cái két để ở nhà (nằm trên web, máy nào/incognito nào cũng lấy được)
+   - Mở tool → so giờ lưu (savedAt) → cái nào mới hơn thì dùng cái đó
+   - Muốn cập nhật két ở nhà: Xuất .dat → thay tools/mymark/vault.dat → push
    ========================================================= */
-// 👉 Sau khi kết nối lần đầu, dán ID gist vào đây rồi push,
-//    để incognito (localStorage trống) vẫn biết tải két ở đâu.
-const SYNC_GIST_ID = '18feb3f4bb40459e199ce0247f9ad767';
+const REPO_VAULT_URL = './vault.dat';
+const EXPORTED_KEY = 'mymark_exported_at';   // savedAt của lần Xuất .dat gần nhất
+const BACKUP_KEY = 'mymark_vault_prev';      // bản trên máy trước khi bị két repo đè (phòng hờ)
 
-const GIST_FILE = 'mymark-vault.json';
-const GIST_ID_KEY = 'mymark_gist_id';
-const DIRTY_KEY = 'mymark_dirty';   // '1' = bản trên máy mới hơn gist, đừng để gist ghi đè
-const GH_API = 'https://api.github.com/gists';
-
-function getGistId() {
-  if (SYNC_GIST_ID) return SYNC_GIST_ID;
-  try { return localStorage.getItem(GIST_ID_KEY) || ''; } catch { return ''; }
-}
-
-// Tải két từ gist về và cất vào localStorage (không cần token vì đọc secret gist bằng ID là được)
-async function pullVault() {
-  const res = await fetch(`${GH_API}/${getGistId()}`, { cache: 'no-store', headers: { Accept: 'application/vnd.github+json' } });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  const file = (await res.json()).files?.[GIST_FILE];
-  if (!file) throw new Error('Gist không có file két');
-  const content = file.truncated ? await (await fetch(file.raw_url, { cache: 'no-store' })).text() : file.content;
-  const v = JSON.parse(content);
-  if (!v.salt || !v.data) throw new Error('Két hỏng');
-  localStorage.setItem(VAULT_KEY, content);
-  localStorage.removeItem(DIRTY_KEY);
-}
-
-// Badge trạng thái trên header
-function setSyncStatus(s) {
-  syncState = s;
-  const map = {
-    local:   ['fa-hard-drive', 'Chỉ lưu máy', 'text-gray-500'],
-    pending: ['fa-rotate', 'Chờ lưu…', 'text-amber-400'],
-    saving:  ['fa-rotate fa-spin', 'Đang lưu…', 'text-amber-400'],
-    ok:      ['fa-cloud', 'Đã đồng bộ', 'text-emerald-400'],
-    error:   ['fa-triangle-exclamation', 'Lỗi đồng bộ · bấm thử lại', 'text-red-400'],
-  };
-  const [icon, label, color] = map[s];
-  const el = document.getElementById('syncBadge');
-  if (el) el.innerHTML = `<span class="${color}"><i class="fa-solid ${icon}"></i> <span class="hidden md:inline">${label}</span></span>`;
-}
-let syncState = 'local';
-
-// Đẩy két lên gist, gom nhiều lần sửa liên tiếp thành 1 lần (chờ 1.5s)
-let pushTimer = null;
-function schedulePush() {
-  if (!syncToken || !getGistId()) { setSyncStatus('local'); return; }
-  setSyncStatus('pending');
-  clearTimeout(pushTimer);
-  pushTimer = setTimeout(pushVault, 1500);
-}
-async function pushVault() {
-  clearTimeout(pushTimer); pushTimer = null;
-  await saveChain;
-  if (!syncToken || !getGistId()) return;
-  setSyncStatus('saving');
+// Tải vault.dat từ repo (thêm ?t= để không dính cache cũ của GitHub Pages)
+async function fetchRepoVault() {
   try {
-    const res = await fetch(`${GH_API}/${getGistId()}`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${syncToken}`, Accept: 'application/vnd.github+json' },
-      body: JSON.stringify({ files: { [GIST_FILE]: { content: localStorage.getItem(VAULT_KEY) } } }),
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    localStorage.removeItem(DIRTY_KEY);
-    setSyncStatus('ok');
-  } catch (e) {
-    console.warn('Push gist lỗi', e);
-    setSyncStatus('error');
-  }
+    const res = await fetch(`${REPO_VAULT_URL}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) return null;   // chưa có file → thôi
+    const v = JSON.parse(await res.text());
+    return v && v.salt && v.iv && v.data ? v : null;
+  } catch { return null; }
 }
 
-// Lỡ tắt tab khi chưa đẩy xong → trình duyệt hỏi lại
-window.addEventListener('beforeunload', (e) => {
-  if (['pending', 'saving'].includes(syncState)) { e.preventDefault(); e.returnValue = ''; }
-});
+// Badge trên header: còn thay đổi chưa xuất .dat hay chưa
+function updateExportBadge() {
+  const el = document.getElementById('syncBadge');
+  if (!el) return;
+  let pending = false;
+  try {
+    const v = readVault();
+    const exp = localStorage.getItem(EXPORTED_KEY);
+    pending = !!v && (exp === null || (v.savedAt || 0) > Number(exp));
+  } catch {}
+  el.innerHTML = pending
+    ? '<span class="text-amber-400"><i class="fa-solid fa-file-export"></i> <span class="hidden md:inline">Chưa xuất</span></span>'
+    : '<span class="text-gray-500"><i class="fa-solid fa-circle-check"></i> <span class="hidden md:inline">Đã xuất</span></span>';
+  el.title = pending ? 'Có thay đổi chưa xuất .dat · bấm để xuất' : 'Bản trên máy đã xuất · bấm để xuất lại';
+}
+
+// Xuất két ra file vault.dat (chỉ chứa bookmark, đã khoá bằng PIN hiện tại)
+async function exportDat() {
+  if (!cryptoKey) return;
+  saveChain = saveChain.then(() => writeVault(payload(), cryptoKey, readVault().salt));
+  await saveChain;
+  const content = localStorage.getItem(VAULT_KEY);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type: 'application/octet-stream' }));
+  a.download = 'vault.dat';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  localStorage.setItem(EXPORTED_KEY, String(JSON.parse(content).savedAt));
+  updateExportBadge();
+  toast('Đã xuất vault.dat → thay vào tools/mymark/ rồi push', 'fa-file-export');
+}
 
 /* =========================================================
    2. STATE – "trạng thái" hiện tại của trang
@@ -545,16 +514,8 @@ $('#menuBtn').addEventListener('click', (e) => {
 $('#mainMenu').addEventListener('click', (e) => {
   const act = e.target.closest('[data-act]')?.dataset.act;
   closeAllDropdowns();
-  if (act === 'export-json') {
-    const blob = new Blob([JSON.stringify(bookmarks, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `mymark-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-  if (act === 'import-json') $('#importFile').click();
-  if (act === 'sync') openSyncModal();
+  if (act === 'export-dat') exportDat();
+  if (act === 'import') $('#importFile').click();
   if (act === 'change-pass') {
     $('#passForm').reset(); $('#passError').textContent = '';
     $('#passModal').classList.add('open');
@@ -565,34 +526,67 @@ $('#mainMenu').addEventListener('click', (e) => {
   }
 });
 
-// Nhập JSON: gộp vào data hiện có, bỏ qua URL đã tồn tại
+// Gộp danh sách bookmark vào data hiện có, bỏ qua URL đã tồn tại → trả về số cái mới
+function mergeBookmarks(data) {
+  if (!Array.isArray(data)) data = data.bookmarks || [];
+  if (!Array.isArray(data)) return 0;
+  const existing = new Set(bookmarks.map(b => b.url));
+  let added = 0;
+  data.forEach(raw => {
+    if (!raw || !raw.url || existing.has(raw.url)) return;
+    // Viết tay cho tiện: tags ghi "a, b, c" cũng được
+    const tags = Array.isArray(raw.tags) ? raw.tags.map(String)
+      : typeof raw.tags === 'string' ? raw.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+    bookmarks.push({
+      id: String(raw.id || uid()),
+      title: raw.title || getDomain(raw.url),
+      url: raw.url,
+      thumbnail: raw.thumbnail || '',
+      tags,
+      clickCount: Number(raw.clickCount) || 0,
+      date: raw.date && !isNaN(new Date(raw.date)) ? new Date(raw.date).toISOString() : new Date().toISOString(),
+    });
+    existing.add(raw.url); added++;
+  });
+  return added;
+}
+
+// Hộp hỏi PIN của file .dat (khi PIN file khác PIN đang dùng)
+// tryOpen(pin) trả về kết quả nếu đúng, null nếu sai → sai thì hỏi lại, bấm X thì trả null
+function askPin(tryOpen) {
+  return new Promise((resolve) => {
+    const m = $('#pinModal'), form = $('#pinForm'), input = $('#pinInput'), err = $('#pinError');
+    form.reset(); err.textContent = '';
+    m.classList.add('open');
+    setTimeout(() => input.focus(), 50);
+    const done = (val) => { m.classList.remove('open'); form.onsubmit = null; m.onclick = null; resolve(val); };
+    form.onsubmit = async (ev) => {
+      ev.preventDefault();
+      const r = await tryOpen(input.value);
+      if (r) done(r); else { err.textContent = 'Sai PIN.'; input.select(); }
+    };
+    m.onclick = (ev) => { if (ev.target.closest('[data-close]')) done(null); };
+  });
+}
+
+// Nhập: file .json (viết tay, chữ rõ) hoặc .dat (két đã khoá) → gộp vào
 $('#importFile').addEventListener('change', async (e) => {
   const file = e.target.files[0];
-  if (!file) return;
-  try {
-    let data = JSON.parse(await file.text());
-    if (!Array.isArray(data)) data = data.bookmarks || data.data || [];
-    const existing = new Set(bookmarks.map(b => b.url));
-    let added = 0;
-    data.forEach(raw => {
-      if (!raw || !raw.url || existing.has(raw.url)) return;
-      bookmarks.push({
-        id: String(raw.id || uid()),
-        title: raw.title || getDomain(raw.url),
-        url: raw.url,
-        thumbnail: raw.thumbnail || '',
-        tags: Array.isArray(raw.tags) ? raw.tags.map(String) : [],
-        clickCount: Number(raw.clickCount) || 0,
-        date: raw.date && !isNaN(new Date(raw.date)) ? new Date(raw.date).toISOString() : new Date().toISOString(),
-      });
-      existing.add(raw.url); added++;
-    });
-    saveBookmarks(); render();
-    toast(`Đã nhập ${added} bookmark`);
-  } catch (err) {
-    toast('File JSON không hợp lệ', 'fa-triangle-exclamation');
-  }
   e.target.value = '';
+  if (!file) return;
+  let data;
+  try { data = JSON.parse(await file.text()); }
+  catch { toast('File không hợp lệ (JSON sai cú pháp?)', 'fa-triangle-exclamation'); return; }
+
+  if (data && data.salt && data.iv && data.data) {          // là két .dat
+    let res = currentPin ? await openVault(currentPin, data) : null;   // thử PIN hiện tại trước
+    if (!res) res = await askPin(pin => openVault(pin, data));
+    if (!res) return;                                         // bấm X huỷ
+    data = res.data;
+  }
+  const added = mergeBookmarks(data);
+  saveBookmarks(); render();
+  toast(`Đã nhập ${added} bookmark`);
 });
 
 /* =========================================================
@@ -633,21 +627,21 @@ $('#lockForm').addEventListener('submit', async (e) => {
     // Nếu còn data chưa mã hoá từ bản P1 thì gom vào két luôn, rồi xoá bản rõ
     let legacy = [];
     try { legacy = JSON.parse(localStorage.getItem(LEGACY_KEY)) || []; } catch {}
-    bookmarks = legacy; syncToken = '';
+    bookmarks = legacy;
     try {
       await createVault(pass, payload());
+      currentPin = pass;
       localStorage.removeItem(LEGACY_KEY);
       toast(legacy.length ? `Đã khoá ${legacy.length} bookmark cũ` : 'Đã tạo mật khẩu');
       unlockDone();
-      if (getGistId()) openSyncModal(true);
     } catch {
       err.textContent = 'Trình duyệt đang chặn lưu trữ (localStorage).';
     }
   } else {
     const res = await openVault(pass);
     if (res) {
-      cryptoKey = res.key; applyPayload(res.data); unlockDone();
-      setSyncStatus(syncToken && getGistId() ? 'ok' : 'local');
+      cryptoKey = res.key; currentPin = pass; applyPayload(res.data); unlockDone();
+      updateExportBadge();
     }
     else { err.textContent = 'Sai mật khẩu.'; $('#lPass').select(); }
   }
@@ -655,105 +649,31 @@ $('#lockForm').addEventListener('submit', async (e) => {
   btn.textContent = isSetup ? 'Tạo mật khẩu' : 'Mở khoá';
 });
 
-// Khoá lại: đẩy nốt lên gist (nếu đang chờ) rồi vứt chìa + data khỏi RAM
+// Khoá lại: vứt chìa + PIN + data khỏi RAM
 $('#lockBtn').addEventListener('click', async () => {
-  if (pushTimer || syncState === 'saving') await pushVault();
-  cryptoKey = null; bookmarks = []; syncToken = '';
+  await saveChain;
+  cryptoKey = null; currentPin = ''; bookmarks = [];
   closeModal();
   document.querySelectorAll('.modal.open').forEach(m => m.classList.remove('open'));
   $('#grid').innerHTML = '';
   showLock('unlock');
 });
 
-// Quên pass: xoá két → tạo pass mới (mất hết bookmark)
+// Quên pass: xoá két trên máy → tạo pass mới (mất bookmark trên máy; vault.dat trong repo vẫn còn)
 $('#forgotBtn').addEventListener('click', () => {
   const ans = prompt('Xoá toàn bộ bookmark để đặt pass mới? Gõ XOA để xác nhận:');
   if (ans && ans.trim().toUpperCase() === 'XOA') {
     localStorage.removeItem(VAULT_KEY);
     localStorage.removeItem(LEGACY_KEY);
-    bookmarks = []; cryptoKey = null; syncToken = '';
+    localStorage.removeItem(EXPORTED_KEY);
+    bookmarks = []; cryptoKey = null; currentPin = '';
     showLock('setup');
     toast('Đã xoá dữ liệu, tạo mật khẩu mới nhé', 'fa-trash');
   }
 });
 
-/* ----- Modal Đồng bộ Gist ----- */
-function openSyncModal(afterReset = false) {
-  syncAfterReset = afterReset;
-  $('#sToken').value = '';
-  $('#sGistId').value = getGistId();
-  $('#syncError').textContent = '';
-  renderSyncInfo();
-  $('#syncModal').classList.add('open');
-}
-let syncAfterReset = false;
-function renderSyncInfo() {
-  const id = getGistId();
-  const connected = syncToken && id;
-  $('#syncInfo').innerHTML = connected
-    ? `<i class="fa-solid fa-circle-check text-emerald-400"></i> Đang đồng bộ với gist <code class="text-gray-300">${esc(id)}</code>`
-    : syncAfterReset && id
-      ? `<i class="fa-solid fa-rotate text-amber-400"></i> Dán token để ghi đè két cũ trên Gist`
-      : `<i class="fa-solid fa-circle-info text-gray-500"></i> Chưa đồng bộ`;
-  $('#syncDisconnect').classList.toggle('hidden', !connected);
-  // Nhắc dán ID vào script.js nếu chưa làm
-  const needPaste = id && !SYNC_GIST_ID;
-  $('#syncPaste').classList.toggle('hidden', !needPaste);
-  if (needPaste) $('#syncPasteLine').textContent = `const SYNC_GIST_ID = '${id}';`;
-}
-
-$('#syncForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const err = $('#syncError');
-  const btn = $('#syncSubmit');
-  const token = $('#sToken').value.trim() || syncToken;
-  let id = $('#sGistId').value.trim().split('/').pop();   // dán cả link gist cũng được
-  if (!token) { err.textContent = 'Cần dán token.'; return; }
-
-  btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
-  err.textContent = '';
-  try {
-    await saveChain;
-    const headers = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' };
-    const body = JSON.stringify({ description: 'MyMark vault (encrypted)', public: false, files: { [GIST_FILE]: { content: localStorage.getItem(VAULT_KEY) } } });
-    // Có ID → ghi đè gist đó. Chưa có → tạo secret gist mới.
-    const res = await fetch(id ? `${GH_API}/${id}` : GH_API, { method: id ? 'PATCH' : 'POST', headers, body });
-    if (res.status === 401) throw new Error('Token sai hoặc hết hạn.');
-    if (res.status === 404) throw new Error('Không thấy gist (sai ID, hoặc token không có quyền gist).');
-    if (!res.ok) throw new Error('GitHub báo lỗi ' + res.status);
-    id = (await res.json()).id;
-
-    localStorage.setItem(GIST_ID_KEY, id);
-    syncToken = token;
-    saveBookmarks();                 // khoá token vào két + đẩy lên gist
-    $('#sGistId').value = id;
-    $('#sToken').value = '';
-    syncAfterReset = false;
-    renderSyncInfo();
-    toast('Đã kết nối Gist', 'fa-cloud');
-  } catch (ex) {
-    err.textContent = ex.message || 'Không kết nối được.';
-  }
-  btn.disabled = false; btn.textContent = 'Kết nối';
-});
-
-$('#syncDisconnect').addEventListener('click', () => {
-  if (!confirm('Ngắt đồng bộ?')) return;
-  syncToken = '';
-  localStorage.removeItem(GIST_ID_KEY);
-  saveBookmarks();
-  renderSyncInfo();
-  toast('Đã ngắt đồng bộ');
-});
-$('#syncCopy').addEventListener('click', () => {
-  navigator.clipboard.writeText($('#syncPasteLine').textContent).then(() => toast('Đã copy'));
-});
-$('#syncBadge').addEventListener('click', () => {
-  if (syncState === 'error') pushVault(); else openSyncModal();
-});
-$('#syncModal').addEventListener('click', (e) => {
-  if (e.target.closest('[data-close]')) $('#syncModal').classList.remove('open');
-});
+// Bấm badge = xuất .dat
+$('#syncBadge').addEventListener('click', exportDat);
 
 // Đổi pass: kiểm tra pass cũ → khoá lại data bằng pass mới
 $('#passForm').addEventListener('submit', async (e) => {
@@ -765,6 +685,7 @@ $('#passForm').addEventListener('submit', async (e) => {
   await saveChain; // chờ lần lưu trước xong
   if (!(await openVault($('#pOld').value))) { err.textContent = 'Mật khẩu hiện tại sai.'; return; }
   await createVault(nw, payload());
+  currentPin = nw;
   $('#passModal').classList.remove('open');
   toast('Đã đổi mật khẩu', 'fa-key');
 });
@@ -785,20 +706,25 @@ if (!window.crypto?.subtle) {
 }
 
 async function boot() {
-  // Có gist → tải bản mới nhất về trước, rồi mới hỏi pass
-  let dirty = false;
-  try { dirty = localStorage.getItem(DIRTY_KEY) === '1' && !!readVault(); } catch {}
-  if (getGistId() && !dirty) {
-    showLock('unlock');
-    $('#lockSub').innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Đang tải két từ Gist...';
-    $('#lockSubmit').disabled = true;
-    try { await pullVault(); }
-    catch (e) {
-      console.warn('Pull gist lỗi', e);
-      toast(readVault() ? 'Không tải được từ Gist, dùng bản trên máy' : 'Không tải được từ Gist', 'fa-triangle-exclamation');
-    }
-    $('#lockSubmit').disabled = false;
+  // Đang tải két ở nhà (vault.dat) → khoá nút mở tạm
+  showLock('unlock');
+  $('#lockSub').innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Đang tải vault.dat...';
+  $('#lockSubmit').disabled = true;
+
+  const remote = await fetchRepoVault();
+  let local = null;
+  try { local = readVault(); } catch {}
+  // Rule: két nào mới hơn thì dùng két đó (két cũ không có savedAt = coi như 0)
+  if (remote && (!local || (remote.savedAt || 0) > (local.savedAt || 0))) {
+    try {
+      if (local) localStorage.setItem(BACKUP_KEY, JSON.stringify(local));
+      localStorage.setItem(VAULT_KEY, JSON.stringify(remote));
+      localStorage.setItem(EXPORTED_KEY, String(remote.savedAt || 0));   // bản này chính là bản đã xuất
+      if (local) toast('Đã lấy bản mới hơn từ repo', 'fa-cloud-arrow-down');
+    } catch {}
   }
+
+  $('#lockSubmit').disabled = false;
   let hasVault = false;
   try { hasVault = !!readVault(); } catch {}
   showLock(hasVault ? 'unlock' : 'setup');

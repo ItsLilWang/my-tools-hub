@@ -85,8 +85,9 @@ Private bookmark board, ported from a Next.js app to a single static tool.
 - Masonry grid (up to 5 columns) with thumbnails, tags, search, Newest / Most viewed sorting.
 - Vietnamese-friendly tag autocomplete (type without accents, Enter picks the top suggestion).
 - Password lock: data is encrypted with AES-GCM (PBKDF2 key) in localStorage — forgetting the password means resetting all bookmarks.
-- Change password, JSON export/import (merge, skips duplicate URLs).
-- Optional GitHub Gist sync: the encrypted vault lives in a secret gist, so a fresh/incognito browser only needs the password. The gist token is stored inside the encrypted vault.
+- Change password. Export = encrypted `vault.dat` only; import accepts hand-written `.json` or `.dat` (merge, skips duplicate URLs; asks for the file's PIN if it differs).
+- Repo vault: on open the tool fetches `tools/mymark/vault.dat` from the site, and whichever copy (browser or repo) was saved more recently wins — so a fresh/incognito browser only needs the PIN. To update it: Export → replace `tools/mymark/vault.dat` → push.
+- `mymark_decode.py`: decode a `.dat` back to plain JSON offline (`pip install cryptography`).
 
 ### 10. [Idea Bank](./tools/idea-bank/index.html)
 
