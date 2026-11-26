@@ -181,6 +181,37 @@
       .toast.show { opacity: 1; transform: translate(-50%, 0); }
       .toast i { color: #ef4444; }
 
+      /* ----- Nút xoá trong ô tìm kiếm ----- */
+      .search-clear { position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); width: 1.9rem; height: 1.9rem;
+        border-radius: 9999px; color: #9ca3af; display: flex; align-items: center; justify-content: center; transition: color .15s, background .15s; }
+      .search-clear:hover { color: #ef4444; background: rgba(255, 255, 255, 0.05); }
+      .search-clear.hidden { display: none; }
+
+      /* ----- Chọn nhiều ----- */
+      .sel-box { display: none; position: absolute; top: 10px; left: 10px; z-index: 3; width: 28px; height: 28px; border-radius: 8px;
+        background: rgba(0, 0, 0, 0.6); border: 2px solid #a1a1aa; align-items: center; justify-content: center; color: #fff; font-size: 0.8rem; }
+      .sel-box i { display: none; }
+      .select-mode .sel-box { display: flex; }
+      .select-mode .bookmark-card { cursor: pointer; }
+      .select-mode .card-actions, .select-mode .fab-add { display: none !important; }
+      .bookmark-card.selected { box-shadow: 0 0 0 2px #ef4444; }
+      .bookmark-card.selected .sel-box { background: #ef4444; border-color: #ef4444; }
+      .bookmark-card.selected .sel-box i { display: block; }
+      #selectBtn .sel-label-on, .select-mode #selectBtn .sel-label-off { display: none; }
+      .select-mode #selectBtn .sel-label-on { display: inline; }
+      .select-mode #selectBtn { color: #ef4444; }
+      .select-bar { position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%); z-index: 45; display: none;
+        align-items: center; gap: 0.5rem; padding: 0.5rem 0.6rem 0.5rem 1.1rem; border-radius: 9999px; background: #222226;
+        border: 1px solid rgba(255, 255, 255, 0.06); box-shadow: 0 14px 34px rgba(0, 0, 0, 0.6); max-width: calc(100vw - 1.5rem); }
+      .select-mode .select-bar { display: flex; }
+      body.locked .select-bar { display: none !important; }
+      .sel-btn { display: flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.8rem; border-radius: 9999px; font-size: 0.8rem;
+        font-weight: 600; color: #d4d4d8; white-space: nowrap; transition: background .15s, color .15s; }
+      .sel-btn:hover { background: rgba(255, 255, 255, 0.06); }
+      .sel-btn.danger { color: #f87171; }
+      .sel-btn.danger:hover { background: rgba(239, 68, 68, 0.15); }
+      .sel-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
       /* ----- Báo trùng link ----- */
       .dup-warn { margin-top: 0.5rem; font-size: 0.8rem; color: #fbbf24; line-height: 1.5; }
       .dup-warn button { color: #f87171; text-decoration: underline; }
@@ -234,8 +265,9 @@
           <i class="fa-solid fa-arrow-left"></i>
         </a>
         <div class="relative flex-1 max-w-xl">
-          <input type="text" id="searchInput" class="neu-pressed w-full pl-11 pr-4 py-2.5 text-sm text-gray-200 outline-none rounded-full" placeholder="Tìm bookmark... ( / )" />
+          <input type="text" id="searchInput" class="neu-pressed w-full pl-11 pr-11 py-2.5 text-sm text-gray-200 outline-none rounded-full" placeholder="Tìm bookmark... ( / )" />
           <i class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
+          <button id="searchClear" class="search-clear hidden" title="Xoá tìm kiếm (Esc)"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="relative flex items-center gap-2 ml-auto">
           <button id="syncBadge" class="text-xs font-semibold px-2 py-2 whitespace-nowrap" title="Đồng bộ"></button>
@@ -263,6 +295,9 @@
           <button class="neu-btn px-4 py-2 text-xs sm:text-sm whitespace-nowrap text-gray-300 font-semibold flex items-center gap-2" data-sort="popular">
             <i class="fa-solid fa-arrow-trend-up"></i> Xem nhiều
           </button>
+          <button id="selectBtn" class="neu-btn px-4 py-2 text-xs sm:text-sm whitespace-nowrap text-gray-300 font-semibold flex items-center gap-2" title="Chọn nhiều để xoá">
+            <i class="fa-regular fa-square-check"></i> <span class="sel-label-off">Chọn</span><span class="sel-label-on">Xong</span>
+          </button>
           <span id="resultCount" class="ml-auto text-xs sm:text-sm font-semibold text-red-400 whitespace-nowrap"></span>
         </div>
         <!-- Tag chip: chỉ hiện trên mobile (desktop dùng sidebar) -->
@@ -273,6 +308,15 @@
 
     <button class="back-top neu-btn" id="backTop" title="Lên đầu trang"><i class="fa-solid fa-arrow-up"></i></button>
     <button class="fab-add" id="fabAdd" title="Thêm bookmark"><i class="fa-solid fa-plus"></i></button>
+
+    <!-- Thanh thao tác khi chọn nhiều -->
+    <div class="select-bar" id="selectBar">
+      <span id="selCount" class="text-sm font-semibold text-white whitespace-nowrap">Đã chọn 0</span>
+      <button id="selAll" class="sel-btn"><i class="fa-solid fa-check-double"></i> <span class="hidden sm:inline">Chọn hết</span></button>
+      <button id="selNone" class="sel-btn"><i class="fa-regular fa-square"></i> <span class="hidden sm:inline">Bỏ chọn</span></button>
+      <button id="selDelete" class="sel-btn danger"><i class="fa-solid fa-trash"></i> Xoá</button>
+      <button id="selExit" class="sel-btn" title="Thoát (Esc)"><i class="fa-solid fa-xmark"></i></button>
+    </div>
 
     <!-- ===================== MODAL THÊM / SỬA ===================== -->
     <div class="modal" id="bmModal">
@@ -410,6 +454,6 @@
     <input type="file" id="importFile" accept=".json,.dat,application/json" class="hidden" />
     <div class="toast" id="toast"></div>
 
-    <script src="script.js?v=20261126d"></script>
+    <script src="script.js?v=20261126e"></script>
   </body>
 </html>

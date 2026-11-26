@@ -286,6 +286,16 @@ function normUrl(u) {
     return host + (x.port ? ':' + x.port : '') + x.pathname.replace(/\/+$/, '') + (q ? '?' + q : '');
   } catch { return String(u).trim().toLowerCase(); }
 }
+// Link trỏ về chính máy này / mạng nội bộ (localhost, 127.x, 192.168.x...)
+// Trang web tải ảnh từ mấy địa chỉ này là Chrome bật hộp hỏi quyền "Access other apps and services"
+function isLocalUrl(u) {
+  try {
+    const h = new URL(u).hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    return h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h === '::1' || h === '0.0.0.0'
+      || /^(127|10)\./.test(h) || /^192\.168\./.test(h) || /^172\.(1[6-9]|2\d|3[01])\./.test(h) || /^169\.254\./.test(h);
+  } catch { return false; }
+}
+
 // Tìm bookmark trùng link (trừ chính cái đang sửa)
 function findDup(url, exceptId = null) {
   const key = normUrl(url);
@@ -384,12 +394,13 @@ function getColumnCount() {
 function cardHTML(b) {
   const domain = getDomain(b.url);
   const letter = esc(domain.charAt(0).toUpperCase());
-  const thumb = b.thumbnail
+  const thumb = b.thumbnail && !isLocalUrl(b.thumbnail)
     ? `<img src="${esc(b.thumbnail)}" alt="" loading="lazy" referrerpolicy="no-referrer"
             onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'thumb-fallback',textContent:'${letter}'}))">`
     : `<div class="thumb-fallback">${letter}</div>`;
   return `
-  <div class="bookmark-card" data-id="${b.id}">
+  <div class="bookmark-card ${selected.has(b.id) ? 'selected' : ''}" data-id="${b.id}">
+    <div class="sel-box"><i class="fa-solid fa-check"></i></div>
     <a class="preview-frame" href="${esc(b.url)}" target="_blank" rel="noopener noreferrer" data-open>${thumb}</a>
     <div class="px-4 pt-3 pb-4">
       <h3 class="text-white font-bold text-[0.95rem] leading-snug break-words">${esc(b.title || domain)}</h3>
@@ -501,7 +512,7 @@ function addTagFromInput() {
 function updateThumbPreview() {
   const url = $('#fThumb').value.trim();
   const box = $('#thumbPreview');
-  if (!url) { box.classList.add('hidden'); return; }
+  if (!url || isLocalUrl(url)) { box.classList.add('hidden'); return; }
   const img = box.querySelector('img');
   img.onload = () => box.classList.remove('hidden');
   img.onerror = () => box.classList.add('hidden');
@@ -654,7 +665,65 @@ function logMeta(url, status, body) {
    8. SỰ KIỆN TRÊN TRANG
    ========================================================= */
 // Search (gõ tới đâu lọc tới đó)
-$('#searchInput').addEventListener('input', (e) => { state.search = e.target.value; renderGrid(); });
+$('#searchInput').addEventListener('input', (e) => {
+  state.search = e.target.value;
+  $('#searchClear').classList.toggle('hidden', !e.target.value);
+  renderGrid();
+});
+// Nút X trong ô tìm kiếm (hoặc Esc khi đang gõ) = xoá chữ
+function clearSearch() {
+  $('#searchInput').value = ''; state.search = '';
+  $('#searchClear').classList.add('hidden');
+  renderGrid();
+  $('#searchInput').focus();
+}
+$('#searchClear').addEventListener('click', clearSearch);
+$('#searchInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && e.target.value) { e.stopPropagation(); clearSearch(); }
+});
+
+/* ----- Chọn nhiều để xoá nhanh -----
+   Bấm "Chọn" → bấm vào card để tick → thanh dưới đáy: Chọn hết / Bỏ chọn / Xoá */
+let selectMode = false;
+const selected = new Set();   // id các bookmark đang tick
+
+function enterSelect() {
+  selectMode = true;
+  document.body.classList.add('select-mode');
+  closeAllDropdowns();
+  updateSelBar();
+}
+function exitSelect() {
+  selectMode = false;
+  selected.clear();
+  document.body.classList.remove('select-mode');
+  document.querySelectorAll('.bookmark-card.selected').forEach(c => c.classList.remove('selected'));
+}
+function toggleSelect(id, card) {
+  if (selected.has(id)) selected.delete(id); else selected.add(id);
+  card?.classList.toggle('selected', selected.has(id));
+  updateSelBar();
+}
+function updateSelBar() {
+  $('#selCount').textContent = `Đã chọn ${selected.size}`;
+  $('#selDelete').disabled = !selected.size;
+}
+$('#selectBtn').addEventListener('click', () => selectMode ? exitSelect() : enterSelect());
+$('#selExit').addEventListener('click', exitSelect);
+$('#selAll').addEventListener('click', () => {      // tick hết những cái đang hiện (theo tag / tìm kiếm)
+  getVisible().forEach(b => selected.add(b.id));
+  renderGrid(); updateSelBar();
+});
+$('#selNone').addEventListener('click', () => { selected.clear(); renderGrid(); updateSelBar(); });
+$('#selDelete').addEventListener('click', () => {
+  const n = selected.size;
+  if (!n || !confirm(`Xoá ${n} bookmark đã chọn? Không hoàn tác được.`)) return;
+  bookmarks = bookmarks.filter(b => !selected.has(b.id));
+  saveBookmarks();
+  exitSelect();
+  render();
+  toast(`Đã xoá ${n} bookmark`, 'fa-trash');
+});
 
 // Sort
 document.querySelectorAll('[data-sort]').forEach(btn => btn.addEventListener('click', () => {
@@ -678,6 +747,12 @@ $('#grid').addEventListener('click', (e) => {
   const card = e.target.closest('.bookmark-card');
   if (!card) return;
   const bm = bookmarks.find(b => b.id === card.dataset.id);
+
+  if (selectMode) {            // đang chọn nhiều: không mở link, không lọc tag
+    e.preventDefault(); e.stopPropagation();
+    toggleSelect(bm.id, card);
+    return;
+  }
 
   if (e.target.closest('[data-open]')) {
     bm.clickCount = (bm.clickCount || 0) + 1;
@@ -720,7 +795,11 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Esc chỉ đóng menu, KHÔNG đóng popup (tránh lỡ tay mất form)
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAllDropdowns(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  closeAllDropdowns();
+  if (selectMode && !document.querySelector('.modal.open')) exitSelect();
+});
 
 // Back to top: cuộn xuống > 400px thì hiện nút
 window.addEventListener('scroll', () => {
@@ -903,6 +982,9 @@ const lockMode = () => ['setup', 'remote', 'unlock'].find(m => $('#lockScreen').
 function unlockDone() {
   document.body.classList.remove('locked');
   render();
+  const local = bookmarks.filter(b => b.thumbnail && isLocalUrl(b.thumbnail));
+  if (local.length) console.warn('[MyMark] Bookmark có ảnh trỏ về máy / mạng nội bộ (không hiện ảnh):',
+    local.map(b => ({ title: b.title, thumbnail: b.thumbnail })));
 }
 
 // Mở bằng két trên server (máy chưa có két, hoặc két trên máy dùng pass cũ)
@@ -1010,6 +1092,7 @@ $('#lockBtn').addEventListener('click', async () => {
   await flushPush();
   await syncChain;
   cryptoKey = null; currentPin = ''; authToken = null; bookmarks = [];
+  exitSelect();
   setSyncState('off');
   closeModal();
   document.querySelectorAll('.modal.open').forEach(m => m.classList.remove('open'));
