@@ -186,6 +186,8 @@
       body.locked .lock-screen { display: flex; }
       body.locked #app, body.locked .sidebar-area, body.locked .fab-add, body.locked .back-top, body.locked .modal { display: none !important; }
       .lock-screen.mode-setup .unlock-only, .lock-screen.mode-unlock .setup-only { display: none !important; }
+      .lock-screen.mode-remote .setup-only, .lock-screen.mode-remote .unlock-only,
+      .lock-screen:not(.mode-remote) .remote-only { display: none !important; }
 
       @media (max-width: 768px) {
         .sidebar-area { display: none; }
@@ -224,7 +226,7 @@
           <i class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
         </div>
         <div class="relative flex items-center gap-2 ml-auto">
-          <button id="syncBadge" class="text-xs font-semibold px-2 py-2 whitespace-nowrap" title="Xuất .dat"></button>
+          <button id="syncBadge" class="text-xs font-semibold px-2 py-2 whitespace-nowrap" title="Đồng bộ"></button>
           <button id="menuBtn" class="neu-btn w-10 h-10 flex items-center justify-center text-gray-400" title="Dữ liệu & mật khẩu">
             <i class="fa-solid fa-gear"></i>
           </button>
@@ -233,7 +235,7 @@
           </button>
           <div class="dropdown" id="mainMenu">
             <button data-act="change-pass"><i class="fa-solid fa-key"></i> Đổi mật khẩu</button>
-            <button data-act="export-dat"><i class="fa-solid fa-file-export"></i> Xuất .dat</button>
+            <button data-act="export-dat"><i class="fa-solid fa-file-export"></i> Xuất .dat (backup)</button>
             <button data-act="import"><i class="fa-solid fa-file-import"></i> Nhập .json / .dat</button>
             <button data-act="clear-all" class="danger"><i class="fa-solid fa-trash"></i> Xóa toàn bộ</button>
           </div>
@@ -354,6 +356,7 @@
           <p id="lockError" class="text-sm text-red-400 text-left min-h-[1.25rem]"></p>
           <button type="submit" id="lockSubmit" class="neu-btn w-full py-3 text-red-500 font-bold uppercase tracking-wider">Mở khoá</button>
         </form>
+        <button id="newVaultBtn" class="remote-only text-xs text-gray-600 hover:text-red-500 underline transition">Chưa có két? Tạo két mới</button>
         <button id="forgotBtn" class="unlock-only text-xs text-gray-600 hover:text-red-500 underline transition">Quên mật khẩu?</button>
         <a href="../../index.html" class="text-xs text-gray-600 hover:text-red-500 transition"><i class="fa-solid fa-arrow-left"></i> Về Hub</a>
       </div>
@@ -362,6 +365,6 @@
     <input type="file" id="importFile" accept=".json,.dat,application/json" class="hidden" />
     <div class="toast" id="toast"></div>
 
-    <script src="script.js?v=20261125"></script>
+    <script src="script.js?v=20261126"></script>
   </body>
 </html>

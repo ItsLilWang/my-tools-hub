@@ -39,7 +39,7 @@ async function writeVault(data, key, saltB64) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(data)));
   localStorage.setItem(VAULT_KEY, JSON.stringify({ v: 2, savedAt: Date.now(), salt: saltB64, iv: toB64(iv), data: toB64(cipher) }));
-  updateExportBadge();
+  schedulePush();   // lưu xong → hẹn giờ đẩy lên server
 }
 
 // Tạo két mới bằng password mới (dùng cho: tạo lần đầu + đổi pass)
@@ -69,44 +69,172 @@ function saveBookmarks() {
 }
 
 /* =========================================================
-   1b. KÉT Ở NHÀ = file vault.dat trong repo
+   1b. ĐỒNG BỘ VỚI SERVER (Cloudflare Worker)
    Ví dụ đời thường:
    - localStorage = cái túi mang theo (mỗi trình duyệt 1 túi, incognito thì túi rỗng)
-   - vault.dat    = cái két để ở nhà (nằm trên web, máy nào/incognito nào cũng lấy được)
-   - Mở tool → so giờ lưu (savedAt) → cái nào mới hơn thì dùng cái đó
-   - Muốn cập nhật két ở nhà: Xuất .dat → thay tools/mymark/vault.dat → push
+   - Worker       = ông bảo vệ giữ tủ đồ trên mạng, máy nào cũng tới lấy được
+   - Vé vào cửa   = làm từ CHÍNH mật khẩu nhưng bằng "muối" khác
+                    → bảo vệ chỉ soát vé, KHÔNG mở được két
+   - Rule: két nào mới hơn (savedAt) thì thắng
    ========================================================= */
-const REPO_VAULT_URL = './vault.dat';
-const EXPORTED_KEY = 'mymark_exported_at';   // savedAt của lần Xuất .dat gần nhất
-const BACKUP_KEY = 'mymark_vault_prev';      // bản trên máy trước khi bị két repo đè (phòng hờ)
+const SYNC_URL = 'https://mymark-sync.inukuma-boutique.workers.dev/vault';
+const AUTH_SALT = 'mymark-sync-auth-v1';   // PHẢI khớp với mymark-hash-helper.html
+const AUTH_ITER = 300000;
+const SYNCED_KEY = 'mymark_synced_at';     // savedAt của bản mà server đang giữ (theo lần sync gần nhất)
+const BACKUP_KEY = 'mymark_vault_prev';    // bản trên máy trước khi bị bản server đè (phòng hờ)
+const PUSH_DELAY = 2500;                   // sửa xong chờ 2.5s không đụng gì nữa mới đẩy (debounce)
+const MIN_PASS = 8;                        // mật khẩu mới tối thiểu 8 ký tự
 
-// Tải vault.dat từ repo (thêm ?t= để không dính cache cũ của GitHub Pages)
-async function fetchRepoVault() {
-  try {
-    const res = await fetch(`${REPO_VAULT_URL}?t=${Date.now()}`, { cache: 'no-store' });
-    if (!res.ok) return null;   // chưa có file → thôi
-    const v = JSON.parse(await res.text());
-    return v && v.salt && v.iv && v.data ? v : null;
-  } catch { return null; }
+let authToken = null;     // vé vào cửa, chỉ nằm trong RAM
+let pushTimer = null;
+let syncChain = Promise.resolve();   // hàng đợi: mỗi lúc chỉ 1 việc sync chạy
+let lastPullAt = 0;
+let syncState = 'off';
+
+// Mật khẩu → vé vào cửa (giống hệt cách mymark-hash-helper.html làm)
+async function deriveToken(password) {
+  const enc = new TextEncoder();
+  const base = await crypto.subtle.importKey('raw', enc.encode(password.trim().normalize('NFC')), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: enc.encode(AUTH_SALT), iterations: AUTH_ITER, hash: 'SHA-256' }, base, 256);
+  return [...new Uint8Array(bits)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Badge trên header: còn thay đổi chưa xuất .dat hay chưa
-function updateExportBadge() {
+const getSyncedAt = () => Number(localStorage.getItem(SYNCED_KEY)) || 0;
+const setSyncedAt = (t) => { try { localStorage.setItem(SYNCED_KEY, String(t)); } catch {} };
+
+// Gõ cửa server. Không ném lỗi, luôn trả về { status } cho dễ xử lý
+async function callServer(method, token, body) {
+  try {
+    const res = await fetch(SYNC_URL, {
+      method, cache: 'no-store',
+      headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) return { status: 'auth' };
+    if (res.status === 409) return { status: 'stale', data };
+    if (!res.ok) return { status: 'error', data };
+    return { status: 'ok', data };
+  } catch { return { status: 'offline' }; }
+}
+
+// Lấy két trên server về (chưa mở) → status: ok | empty | auth | offline | error
+async function pullRemote(token = authToken) {
+  const r = await callServer('GET', token);
+  lastPullAt = Date.now();
+  if (r.status !== 'ok') return r;
+  if (r.data.empty) return { status: 'empty' };
+  try {
+    const v = JSON.parse(r.data.vault);
+    if (v && v.salt && v.iv && v.data) return { status: 'ok', vault: v };
+  } catch {}
+  return { status: 'error' };
+}
+
+// Cất két từ server vào túi (giữ bản cũ làm backup)
+function storeRemote(v) {
+  try {
+    const old = localStorage.getItem(VAULT_KEY);
+    if (old) localStorage.setItem(BACKUP_KEY, old);
+    localStorage.setItem(VAULT_KEY, JSON.stringify(v));
+  } catch {}
+  setSyncedAt(v.savedAt || 0);
+}
+
+// Bản server mới hơn → mở bằng mật khẩu đang dùng rồi thay vào
+async function applyRemote(v) {
+  if ((readVault()?.savedAt || 0) >= (v.savedAt || 0)) return pushLocal();   // vừa sửa thêm → bản mình mới hơn
+  const res = await openVault(currentPin, v);
+  if (!cryptoKey) return;   // đã bấm khoá trong lúc chờ
+  if (!res) { setSyncState('mismatch'); return; }
+  storeRemote(v);
+  cryptoKey = res.key; applyPayload(res.data);
+  render();
+  setSyncState('synced');
+  toast('Đã lấy bản mới hơn từ server', 'fa-cloud-arrow-down');
+}
+
+// Đẩy két trong túi lên server (nếu có thay đổi chưa đẩy)
+async function pushLocal() {
+  const raw = localStorage.getItem(VAULT_KEY);
+  if (!authToken || !raw) return;
+  const savedAt = JSON.parse(raw).savedAt || 0;
+  if (savedAt <= getSyncedAt()) { setSyncState('synced'); return; }
+  setSyncState('syncing');
+  const r = await callServer('PUT', authToken, { savedAt, vault: raw });
+  if (r.status === 'ok') {
+    setSyncedAt(savedAt);
+    setSyncState('synced');
+  } else if (r.status === 'stale') {
+    // Máy khác vừa lưu bản mới hơn → bản đó thắng
+    toast('Máy khác vừa lưu bản mới hơn → tải bản đó về', 'fa-cloud-arrow-down');
+    await syncInner();
+  } else setSyncState(r.status);
+}
+
+// Sync đầy đủ: kéo về → so giờ lưu → bản nào mới hơn thì thắng
+async function syncInner() {
+  if (!authToken) return;
+  await saveChain;   // chờ lần lưu dở dang xong
+  setSyncState('syncing');
+  const r = await pullRemote();
+  if (!authToken) return;
+  if (r.status !== 'ok' && r.status !== 'empty') { setSyncState(r.status); return; }
+  const localAt = readVault()?.savedAt || 0;
+  const remoteAt = r.status === 'ok' ? (r.vault.savedAt || 0) : 0;
+  setSyncedAt(remoteAt);
+  if (remoteAt > localAt) return applyRemote(r.vault);
+  if (localAt > remoteAt) return pushLocal();
+  setSyncState('synced');
+}
+
+// Mọi việc sync đi qua hàng đợi, không giẫm chân nhau
+function queueSync(fn) {
+  syncChain = syncChain.then(fn).catch(() => setSyncState('error'));
+  return syncChain;
+}
+function syncNow() {
+  clearTimeout(pushTimer); pushTimer = null;
+  return queueSync(syncInner);
+}
+function schedulePush() {
+  if (!authToken) return;
+  setSyncState('pending');
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => { pushTimer = null; queueSync(pushLocal); }, PUSH_DELAY);
+}
+// Đang hẹn giờ đẩy → đẩy luôn (dùng khi khoá / rời tab)
+function flushPush() {
+  if (!pushTimer) return syncChain;
+  clearTimeout(pushTimer); pushTimer = null;
+  return queueSync(pushLocal);
+}
+
+// Badge trên header: trạng thái đồng bộ, bấm vào = sync lại ngay
+const SYNC_UI = {
+  syncing:  ['text-gray-400',  'fa-arrows-rotate fa-spin', 'Đang sync', 'Đang đồng bộ với server...'],
+  pending:  ['text-amber-400', 'fa-cloud-arrow-up',        'Chờ sync',  'Có thay đổi, sắp đẩy lên server'],
+  synced:   ['text-gray-500',  'fa-circle-check',          'Đã sync',   'Máy và server đã khớp · bấm để sync lại'],
+  offline:  ['text-amber-400', 'fa-wifi',                  'Offline',   'Không kết nối được server · bấm để thử lại'],
+  auth:     ['text-red-400',   'fa-key',                   'Sai vé',    'Server từ chối: mật khẩu chưa khớp AUTH_HASH trên Cloudflare'],
+  mismatch: ['text-red-400',   'fa-lock',                  'Khác pass', 'Két trên server khoá bằng mật khẩu khác'],
+  error:    ['text-red-400',   'fa-triangle-exclamation',  'Lỗi sync',  'Server báo lỗi · bấm để thử lại'],
+};
+function setSyncState(s) {
+  const prev = syncState;
+  syncState = s;
   const el = document.getElementById('syncBadge');
   if (!el) return;
-  let pending = false;
-  try {
-    const v = readVault();
-    const exp = localStorage.getItem(EXPORTED_KEY);
-    pending = !!v && (exp === null || (v.savedAt || 0) > Number(exp));
-  } catch {}
-  el.innerHTML = pending
-    ? '<span class="text-amber-400"><i class="fa-solid fa-file-export"></i> <span class="hidden md:inline">Chưa xuất</span></span>'
-    : '<span class="text-gray-500"><i class="fa-solid fa-circle-check"></i> <span class="hidden md:inline">Đã xuất</span></span>';
-  el.title = pending ? 'Có thay đổi chưa xuất .dat · bấm để xuất' : 'Bản trên máy đã xuất · bấm để xuất lại';
+  const ui = SYNC_UI[s];
+  el.innerHTML = ui ? `<span class="${ui[0]}"><i class="fa-solid ${ui[1]}"></i> <span class="hidden md:inline">${ui[2]}</span></span>` : '';
+  el.title = ui ? ui[3] : '';
+  if (s === prev) return;
+  if (s === 'auth') toast('Server từ chối vé → đổi mật khẩu sang passphrase đã tạo AUTH_HASH', 'fa-key');
+  if (s === 'mismatch') toast('Két trên server dùng mật khẩu khác', 'fa-lock');
 }
 
-// Xuất két ra file vault.dat (chỉ chứa bookmark, đã khoá bằng PIN hiện tại)
+// Xuất két ra file vault.dat (bản backup để cất riêng, không cần push nữa)
 async function exportDat() {
   if (!cryptoKey) return;
   saveChain = saveChain.then(() => writeVault(payload(), cryptoKey, readVault().salt));
@@ -117,9 +245,7 @@ async function exportDat() {
   a.download = 'vault.dat';
   a.click();
   URL.revokeObjectURL(a.href);
-  localStorage.setItem(EXPORTED_KEY, String(JSON.parse(content).savedAt));
-  updateExportBadge();
-  toast('Đã xuất vault.dat → thay vào tools/mymark/ rồi push', 'fa-file-export');
+  toast('Đã xuất vault.dat (bản backup)', 'fa-file-export');
 }
 
 /* =========================================================
@@ -382,7 +508,8 @@ $('#bmForm').addEventListener('submit', (e) => {
   };
   if (editingId) {
     const b = bookmarks.find(x => x.id === editingId);
-    Object.assign(b, data);
+    if (b) Object.assign(b, data);   // lỡ bản sync về đã xoá cái này → thêm lại như mới
+    else bookmarks.push({ id: editingId, ...data, clickCount: 0, date: new Date().toISOString() });
     toast('Đã cập nhật');
   } else {
     bookmarks.push({ id: uid(), ...data, clickCount: 0, date: new Date().toISOString() });
@@ -592,106 +719,187 @@ $('#importFile').addEventListener('change', async (e) => {
 /* =========================================================
    10. KHOÁ / MỞ KHOÁ / ĐỔI PASS / QUÊN PASS
    ========================================================= */
+const LOCK_SUB = {
+  setup: `Tạo mật khẩu mới (≥ ${MIN_PASS} ký tự)`,
+  unlock: '',
+  remote: 'Máy này chưa có két · nhập mật khẩu để tải từ server',
+};
 function showLock(mode) {
-  // mode: 'setup' = chưa có pass, tạo mới | 'unlock' = đã có pass, nhập để mở
+  // mode: 'setup'  = tạo két mới
+  //       'unlock' = máy này có két, nhập pass để mở
+  //       'remote' = máy này chưa có két (vd tab ẩn danh) → tải từ server
   const ls = $('#lockScreen');
   ls.className = 'lock-screen mode-' + mode;
   document.body.classList.add('locked');
   $('#lockForm').reset();
   $('#lockError').textContent = '';
   $('#lPass2').required = mode === 'setup';
-  $('#lockSub').innerHTML = mode === 'setup' ? 'Tạo mật khẩu' : '';
+  $('#lockSub').textContent = LOCK_SUB[mode];
   $('#lockSubmit').textContent = mode === 'setup' ? 'Tạo mật khẩu' : 'Mở khoá';
   setTimeout(() => $('#lPass').focus(), 50);
 }
+const lockMode = () => ['setup', 'remote', 'unlock'].find(m => $('#lockScreen').classList.contains('mode-' + m));
 
 function unlockDone() {
   document.body.classList.remove('locked');
   render();
 }
 
+// Mở bằng két trên server (máy chưa có két, hoặc két trên máy dùng pass cũ)
+// → trả về 'ok' | 'empty' | 'auth' | 'mismatch' | 'offline' | 'error'
+async function remoteUnlock(pass) {
+  const token = await deriveToken(pass);
+  const r = await pullRemote(token);
+  if (r.status !== 'ok') return r.status;
+  const res = await openVault(pass, r.vault);
+  if (!res) return 'mismatch';
+  storeRemote(r.vault);
+  cryptoKey = res.key; currentPin = pass; authToken = token;
+  applyPayload(res.data);
+  unlockDone();
+  setSyncState('synced');
+  return 'ok';
+}
+
+// Tạo két mới. Server đã có két thì KHÔNG tạo (tránh đè mất bookmark)
+async function doSetup(pass) {
+  const token = await deriveToken(pass);
+  const r = await pullRemote(token);
+  if (r.status === 'ok') {
+    showLock('remote');
+    $('#lockError').textContent = 'Server đã có két khoá bằng mật khẩu này → bấm Mở khoá.';
+    return;
+  }
+  // Nếu còn data chưa mã hoá từ bản P1 thì gom vào két luôn, rồi xoá bản rõ
+  let legacy = [];
+  try { legacy = JSON.parse(localStorage.getItem(LEGACY_KEY)) || []; } catch {}
+  bookmarks = legacy;
+  try {
+    localStorage.removeItem(SYNCED_KEY);
+    await createVault(pass, payload());
+  } catch {
+    $('#lockError').textContent = 'Trình duyệt đang chặn lưu trữ (localStorage).';
+    return;
+  }
+  currentPin = pass; authToken = token;
+  localStorage.removeItem(LEGACY_KEY);
+  toast(legacy.length ? `Đã khoá ${legacy.length} bookmark cũ` : 'Đã tạo mật khẩu');
+  unlockDone();
+  if (r.status === 'empty') syncNow();   // server trống → đẩy két mới lên
+  else setSyncState(r.status);           // auth / offline / error → báo trên badge
+}
+
+// Mở két trên máy. Sai pass → thử két trên server (có thể máy khác vừa đổi pass)
+async function doLocalUnlock(pass) {
+  const res = await openVault(pass);
+  if (res) {
+    cryptoKey = res.key; currentPin = pass; applyPayload(res.data);
+    unlockDone();
+    // Làm vé ở nền rồi sync, không bắt chờ
+    deriveToken(pass).then(t => { if (cryptoKey && currentPin === pass) { authToken = t; syncNow(); } });
+    return;
+  }
+  if (await remoteUnlock(pass) === 'ok') { toast('Mật khẩu đã đổi ở máy khác → đã tải két mới', 'fa-cloud-arrow-down'); return; }
+  $('#lockError').textContent = 'Sai mật khẩu.';
+  $('#lPass').select();
+}
+
+const REMOTE_ERR = {
+  auth: 'Sai mật khẩu (server từ chối).',
+  mismatch: 'Sai mật khẩu.',
+  empty: 'Server chưa có két nào → bấm "Tạo két mới" bên dưới.',
+  offline: 'Không kết nối được server.',
+  error: 'Server báo lỗi, thử lại sau.',
+};
+async function doRemoteUnlock(pass) {
+  const s = await remoteUnlock(pass);
+  if (s === 'ok') return;
+  $('#lockError').textContent = REMOTE_ERR[s] || REMOTE_ERR.error;
+  $('#lPass').select();
+}
+
 $('#lockForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const pass = $('#lPass').value;
-  const isSetup = $('#lockScreen').classList.contains('mode-setup');
+  const mode = lockMode();
   const err = $('#lockError');
   const btn = $('#lockSubmit');
 
-  if (isSetup) {
-    if (pass.length < 4) { err.textContent = 'Mật khẩu tối thiểu 4 ký tự.'; return; }
+  if (mode === 'setup') {
+    if (pass.trim().length < MIN_PASS) { err.textContent = `Mật khẩu tối thiểu ${MIN_PASS} ký tự.`; return; }
     if (pass !== $('#lPass2').value) { err.textContent = 'Hai mật khẩu không khớp.'; return; }
   }
+  err.textContent = '';
   btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
-
-  if (isSetup) {
-    // Nếu còn data chưa mã hoá từ bản P1 thì gom vào két luôn, rồi xoá bản rõ
-    let legacy = [];
-    try { legacy = JSON.parse(localStorage.getItem(LEGACY_KEY)) || []; } catch {}
-    bookmarks = legacy;
-    try {
-      await createVault(pass, payload());
-      currentPin = pass;
-      localStorage.removeItem(LEGACY_KEY);
-      toast(legacy.length ? `Đã khoá ${legacy.length} bookmark cũ` : 'Đã tạo mật khẩu');
-      unlockDone();
-    } catch {
-      err.textContent = 'Trình duyệt đang chặn lưu trữ (localStorage).';
-    }
-  } else {
-    const res = await openVault(pass);
-    if (res) {
-      cryptoKey = res.key; currentPin = pass; applyPayload(res.data); unlockDone();
-      updateExportBadge();
-    }
-    else { err.textContent = 'Sai mật khẩu.'; $('#lPass').select(); }
+  try {
+    if (mode === 'setup') await doSetup(pass);
+    else if (mode === 'remote') await doRemoteUnlock(pass);
+    else await doLocalUnlock(pass);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = lockMode() === 'setup' ? 'Tạo mật khẩu' : 'Mở khoá';
   }
-  btn.disabled = false;
-  btn.textContent = isSetup ? 'Tạo mật khẩu' : 'Mở khoá';
 });
 
-// Khoá lại: vứt chìa + PIN + data khỏi RAM
+// Máy chưa có két, server cũng chưa có → tạo mới
+$('#newVaultBtn').addEventListener('click', () => showLock('setup'));
+
+// Khoá lại: đẩy nốt thay đổi lên server, rồi vứt chìa + vé + data khỏi RAM
 $('#lockBtn').addEventListener('click', async () => {
   await saveChain;
-  cryptoKey = null; currentPin = ''; bookmarks = [];
+  await flushPush();
+  await syncChain;
+  cryptoKey = null; currentPin = ''; authToken = null; bookmarks = [];
+  setSyncState('off');
   closeModal();
   document.querySelectorAll('.modal.open').forEach(m => m.classList.remove('open'));
   $('#grid').innerHTML = '';
-  showLock('unlock');
+  showLock(readVault() ? 'unlock' : 'remote');
 });
 
-// Quên pass: xoá két trên máy → tạo pass mới (mất bookmark trên máy; vault.dat trong repo vẫn còn)
+// Quên pass: xoá két trên máy (bản trên server vẫn còn)
 $('#forgotBtn').addEventListener('click', () => {
-  const ans = prompt('Xoá toàn bộ bookmark để đặt pass mới? Gõ XOA để xác nhận:');
+  const ans = prompt('Xoá két trên máy này? (bản trên server vẫn còn) Gõ XOA để xác nhận:');
   if (ans && ans.trim().toUpperCase() === 'XOA') {
     localStorage.removeItem(VAULT_KEY);
     localStorage.removeItem(LEGACY_KEY);
-    localStorage.removeItem(EXPORTED_KEY);
-    bookmarks = []; cryptoKey = null; currentPin = '';
-    showLock('setup');
-    toast('Đã xoá dữ liệu, tạo mật khẩu mới nhé', 'fa-trash');
+    localStorage.removeItem(SYNCED_KEY);
+    bookmarks = []; cryptoKey = null; currentPin = ''; authToken = null;
+    showLock('remote');
+    toast('Đã xoá két trên máy', 'fa-trash');
   }
 });
 
-// Bấm badge = xuất .dat
-$('#syncBadge').addEventListener('click', exportDat);
+// Bấm badge = sync lại ngay
+$('#syncBadge').addEventListener('click', () => { if (authToken) syncNow(); });
 
-// Đổi pass: kiểm tra pass cũ → khoá lại data bằng pass mới
+// Đổi pass: kiểm tra pass cũ → khoá lại data bằng pass mới → đẩy lên server bằng vé mới
 $('#passForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const err = $('#passError');
   const nw = $('#pNew').value;
-  if (nw.length < 4) { err.textContent = 'Mật khẩu mới tối thiểu 4 ký tự.'; return; }
+  if (nw.trim().length < MIN_PASS) { err.textContent = `Mật khẩu mới tối thiểu ${MIN_PASS} ký tự.`; return; }
   if (nw !== $('#pNew2').value) { err.textContent = 'Hai mật khẩu mới không khớp.'; return; }
   await saveChain; // chờ lần lưu trước xong
   if (!(await openVault($('#pOld').value))) { err.textContent = 'Mật khẩu hiện tại sai.'; return; }
+  authToken = await deriveToken(nw);
   await createVault(nw, payload());
   currentPin = nw;
+  flushPush();
   $('#passModal').classList.remove('open');
   toast('Đã đổi mật khẩu', 'fa-key');
 });
 $('#passModal').addEventListener('click', (e) => {
   if (e.target.closest('[data-close]')) $('#passModal').classList.remove('open');
 });
+
+// Rời tab → đẩy liền. Quay lại tab (sau 30s) → kéo bản mới về. Có mạng lại → sync
+document.addEventListener('visibilitychange', () => {
+  if (!authToken) return;
+  if (document.visibilityState === 'hidden') flushPush();
+  else if (Date.now() - lastPullAt > 30000) syncNow();
+});
+window.addEventListener('online', () => { if (authToken) syncNow(); });
 
 /* =========================================================
    11. KHỞI CHẠY
@@ -702,30 +910,7 @@ window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer
 if (!window.crypto?.subtle) {
   document.body.innerHTML = '<p style="padding:40px;text-align:center">Trình duyệt không hỗ trợ mã hoá (cần mở qua https hoặc localhost).</p>';
 } else {
-  boot();
-}
-
-async function boot() {
-  // Đang tải két ở nhà (vault.dat) → khoá nút mở tạm
-  showLock('unlock');
-  $('#lockSub').innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Đang tải vault.dat...';
-  $('#lockSubmit').disabled = true;
-
-  const remote = await fetchRepoVault();
-  let local = null;
-  try { local = readVault(); } catch {}
-  // Rule: két nào mới hơn thì dùng két đó (két cũ không có savedAt = coi như 0)
-  if (remote && (!local || (remote.savedAt || 0) > (local.savedAt || 0))) {
-    try {
-      if (local) localStorage.setItem(BACKUP_KEY, JSON.stringify(local));
-      localStorage.setItem(VAULT_KEY, JSON.stringify(remote));
-      localStorage.setItem(EXPORTED_KEY, String(remote.savedAt || 0));   // bản này chính là bản đã xuất
-      if (local) toast('Đã lấy bản mới hơn từ repo', 'fa-cloud-arrow-down');
-    } catch {}
-  }
-
-  $('#lockSubmit').disabled = false;
   let hasVault = false;
   try { hasVault = !!readVault(); } catch {}
-  showLock(hasVault ? 'unlock' : 'setup');
+  showLock(hasVault ? 'unlock' : 'remote');
 }

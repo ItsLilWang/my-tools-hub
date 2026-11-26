@@ -85,8 +85,8 @@ Private bookmark board, ported from a Next.js app to a single static tool.
 - Masonry grid (up to 5 columns) with thumbnails, tags, search, Newest / Most viewed sorting.
 - Vietnamese-friendly tag autocomplete (type without accents, Enter picks the top suggestion).
 - Password lock: data is encrypted with AES-GCM (PBKDF2 key) in localStorage — forgetting the password means resetting all bookmarks.
-- Change password. Export = encrypted `vault.dat` only; import accepts hand-written `.json` or `.dat` (merge, skips duplicate URLs; asks for the file's PIN if it differs).
-- Repo vault: on open the tool fetches `tools/mymark/vault.dat` from the site, and whichever copy (browser or repo) was saved more recently wins — so a fresh/incognito browser only needs the PIN. To update it: Export → replace `tools/mymark/vault.dat` → push.
+- Change password (min 8 chars). Export = encrypted `vault.dat` backup; import accepts hand-written `.json` or `.dat` (merge, skips duplicate URLs; asks for the file's password if it differs).
+- Auto-sync via a Cloudflare Worker + KV (`mymark-sync`): the password also derives a separate access token (PBKDF2, salt `mymark-sync-auth-v1`) — the Worker only stores its SHA-256 hash (`AUTH_HASH` secret) and only ever sees the encrypted vault. Pull on unlock / tab focus, debounced push after each change; newest `savedAt` wins, and the Worker keeps the previous copy as `vault_prev`. A fresh/incognito browser only needs the password.
 - `mymark_decode.py`: decode a `.dat` back to plain JSON offline (`pip install cryptography`).
 
 ### 10. [Idea Bank](./tools/idea-bank/index.html)
