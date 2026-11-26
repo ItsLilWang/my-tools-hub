@@ -181,6 +181,14 @@
       .toast.show { opacity: 1; transform: translate(-50%, 0); }
       .toast i { color: #ef4444; }
 
+      /* ----- Tìm & thay ----- */
+      .fr-check { display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+      .fr-check input { accent-color: #ef4444; width: 1rem; height: 1rem; }
+      .fr-preview { max-height: 260px; overflow-y: auto; }
+      .fr-row { padding: 0.5rem 0; border-bottom: 1px solid #27272a; }
+      .fr-row:last-child { border-bottom: none; }
+      #frApply:disabled { opacity: 0.4; cursor: not-allowed; }
+
       /* ----- Màn hình khoá ----- */
       .lock-screen { position: fixed; inset: 0; z-index: 70; display: none; align-items: center; justify-content: center; padding: 1rem; background: #18181b; }
       body.locked .lock-screen { display: flex; }
@@ -236,6 +244,7 @@
           <div class="dropdown" id="mainMenu">
             <button data-act="change-pass"><i class="fa-solid fa-key"></i> Đổi mật khẩu</button>
             <button data-act="export-dat"><i class="fa-solid fa-file-export"></i> Xuất .dat (backup)</button>
+            <button data-act="find-replace"><i class="fa-solid fa-right-left"></i> Tìm &amp; thay</button>
             <button data-act="import"><i class="fa-solid fa-file-import"></i> Nhập .json / .dat</button>
             <button data-act="clear-all" class="danger"><i class="fa-solid fa-trash"></i> Xóa toàn bộ</button>
           </div>
@@ -270,7 +279,8 @@
         </div>
         <form id="bmForm" autocomplete="off" class="flex flex-col gap-4">
           <div>
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">URL trang web <span class="text-red-500">*</span></label>
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">URL trang web <span class="text-red-500">*</span>
+              <span id="metaSpin" class="hidden normal-case tracking-normal font-normal text-gray-500 ml-2"><i class="fa-solid fa-circle-notch fa-spin text-red-500"></i> đang lấy tiêu đề &amp; ảnh...</span></label>
             <input type="url" id="fUrl" required class="neu-pressed w-full mt-2 p-3 text-gray-200 outline-none rounded-xl" placeholder="https://example.com" />
           </div>
           <div>
@@ -294,6 +304,36 @@
           <button type="submit" id="submitBtn" class="neu-btn w-full py-3 mt-2 text-red-500 font-bold uppercase tracking-wider">
             Lưu lại
           </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ===================== MODAL TÌM & THAY ===================== -->
+    <div class="modal" id="frModal">
+      <div class="neu-flat w-full max-w-xl p-5 sm:p-7 flex flex-col gap-4">
+        <div class="flex items-start justify-between gap-3">
+          <h2 class="text-lg font-bold text-white uppercase tracking-wider">Tìm &amp; thay</h2>
+          <button data-close class="neu-btn w-10 h-10 flex items-center justify-center text-gray-500"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="frForm" autocomplete="off" class="flex flex-col gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Tìm</label>
+              <input type="text" id="frFind" class="neu-pressed w-full mt-2 p-3 text-gray-200 outline-none rounded-xl" placeholder="vd: abc.com" />
+            </div>
+            <div>
+              <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Thay bằng</label>
+              <input type="text" id="frReplace" class="neu-pressed w-full mt-2 p-3 text-gray-200 outline-none rounded-xl" placeholder="vd: abc.net" />
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-400">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider self-center">Tìm trong:</span>
+            <label class="fr-check"><input type="checkbox" id="fr_url" checked /> URL</label>
+            <label class="fr-check"><input type="checkbox" id="fr_thumbnail" checked /> Ảnh</label>
+            <label class="fr-check"><input type="checkbox" id="fr_title" /> Tiêu đề</label>
+          </div>
+          <div id="frPreview" class="fr-preview"></div>
+          <button type="submit" id="frApply" class="neu-btn w-full py-3 text-red-500 font-bold uppercase tracking-wider" disabled>Thay</button>
         </form>
       </div>
     </div>
@@ -365,6 +405,6 @@
     <input type="file" id="importFile" accept=".json,.dat,application/json" class="hidden" />
     <div class="toast" id="toast"></div>
 
-    <script src="script.js?v=20261126"></script>
+    <script src="script.js?v=20261126b"></script>
   </body>
 </html>

@@ -491,6 +491,8 @@ function openModal(bm = null) {
   formTags = bm ? [...(bm.tags || [])] : (state.tag !== 'all' ? [state.tag] : []);
   renderChips();
   updateThumbPreview();
+  metaFor = bm?.url || ''; autoTitle = ''; autoThumb = '';   // sửa bookmark cũ: chưa đổi URL thì khỏi lấy lại
+  $('#metaSpin').classList.add('hidden');
   $('#bmModal').classList.add('open');
   setTimeout(() => $('#fUrl').focus(), 50);
 }
@@ -550,6 +552,40 @@ $('#fabAdd').addEventListener('click', () => openModal());
 $('#bmModal').addEventListener('click', (e) => {
   if (e.target.closest('[data-close]')) closeModal();
 });
+
+/* ----- 7b. Tự lấy tiêu đề + thumbnail khi dán URL -----
+   Nhờ Worker đi lấy giùm (trình duyệt bị luật CORS chặn, server thì không).
+   Ô nào bro đã gõ tay thì KHÔNG đè; ô do tool tự điền thì được thay khi đổi URL. */
+const META_URL = SYNC_URL.replace(/\/vault$/, '/meta');
+let metaTimer = null;
+let metaFor = '';                    // URL đang / vừa lấy, để khỏi lấy lại
+let autoTitle = '', autoThumb = '';  // giá trị tool tự điền
+
+function scheduleMeta() {
+  clearTimeout(metaTimer);
+  metaTimer = setTimeout(fetchMeta, 600);   // gõ xong 0.6s mới đi lấy
+}
+
+async function fetchMeta() {
+  const url = $('#fUrl').value.trim();
+  if (!authToken || !/^https?:\/\/[^\s/]+\.[^\s]+$/i.test(url) || url === metaFor) return;
+  metaFor = url;
+  $('#metaSpin').classList.remove('hidden');
+  let m = null;
+  try {
+    const res = await fetch(`${META_URL}?url=${encodeURIComponent(url)}`,
+      { headers: { Authorization: `Bearer ${authToken}` }, cache: 'no-store' });
+    if (res.ok) m = await res.json();
+  } catch {}
+  if (metaFor !== url) return;   // trong lúc chờ đã dán URL khác → để lần sau lo
+  $('#metaSpin').classList.add('hidden');
+  if (!m || !$('#bmModal').classList.contains('open')) return;
+
+  const t = $('#fTitle'), th = $('#fThumb');
+  if (m.title && (!t.value.trim() || t.value === autoTitle)) { t.value = autoTitle = m.title; }
+  if (m.image && (!th.value.trim() || th.value === autoThumb)) { th.value = autoThumb = m.image; updateThumbPreview(); }
+}
+$('#fUrl').addEventListener('input', scheduleMeta);
 
 /* =========================================================
    8. SỰ KIỆN TRÊN TRANG
@@ -643,6 +679,11 @@ $('#mainMenu').addEventListener('click', (e) => {
   closeAllDropdowns();
   if (act === 'export-dat') exportDat();
   if (act === 'import') $('#importFile').click();
+  if (act === 'find-replace') {
+    $('#frForm').reset(); renderFrPreview();
+    $('#frModal').classList.add('open');
+    setTimeout(() => $('#frFind').focus(), 50);
+  }
   if (act === 'change-pass') {
     $('#passForm').reset(); $('#passError').textContent = '';
     $('#passModal').classList.add('open');
@@ -714,6 +755,62 @@ $('#importFile').addEventListener('change', async (e) => {
   const added = mergeBookmarks(data);
   saveBookmarks(); render();
   toast(`Đã nhập ${added} bookmark`);
+});
+
+/* ----- 9b. TÌM & THAY HÀNG LOẠT (vd domain đổi đuôi abc.com → abc.net) -----
+   Không phân biệt hoa/thường. Xem trước danh sách sẽ đổi rồi mới bấm Thay. */
+const escRe = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const FR_FIELDS = { url: 'URL', thumbnail: 'Ảnh', title: 'Tiêu đề' };
+
+// Tính trước: bookmark nào đổi, đổi ô nào thành gì
+function frChanges() {
+  const find = $('#frFind').value;
+  if (!find) return [];
+  const rep = $('#frReplace').value;
+  const re = new RegExp(escRe(find), 'gi');
+  const fields = Object.keys(FR_FIELDS).filter(f => $(`#fr_${f}`).checked);
+  return bookmarks.map(b => {
+    const ch = {};
+    fields.forEach(f => {
+      const v = b[f] || '';
+      const nv = v.replace(re, () => rep);   // dùng hàm để ký tự $ trong ô "Thay bằng" không bị hiểu sai
+      if (nv !== v) ch[f] = nv;
+    });
+    return Object.keys(ch).length ? { b, ch } : null;
+  }).filter(Boolean);
+}
+
+function renderFrPreview() {
+  const list = frChanges();
+  const btn = $('#frApply');
+  btn.disabled = !list.length;
+  btn.textContent = list.length ? `Thay ${list.length} bookmark` : 'Thay';
+  const box = $('#frPreview');
+  if (!$('#frFind').value) { box.innerHTML = ''; return; }
+  if (!list.length) { box.innerHTML = '<p class="text-sm text-gray-500 py-2">Không có bookmark nào khớp.</p>'; return; }
+  box.innerHTML = list.slice(0, 30).map(({ b, ch }) => `
+    <div class="fr-row">
+      <div class="text-sm text-gray-300 truncate">${esc(b.title || getDomain(b.url))}</div>
+      ${Object.keys(ch).map(f => `
+        <div class="text-xs truncate"><span class="text-gray-500">${FR_FIELDS[f]}:</span> <span class="text-red-400 line-through">${esc(b[f])}</span></div>
+        <div class="text-xs truncate text-green-400"><i class="fa-solid fa-arrow-right text-[0.6rem]"></i> ${esc(ch[f])}</div>`).join('')}
+    </div>`).join('')
+    + (list.length > 30 ? `<p class="text-xs text-gray-500 pt-2">... và ${list.length - 30} bookmark nữa</p>` : '');
+}
+
+$('#frForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const list = frChanges();
+  if (!list.length) return;
+  list.forEach(({ b, ch }) => Object.assign(b, ch));
+  saveBookmarks(); render();
+  $('#frModal').classList.remove('open');
+  toast(`Đã thay ${list.length} bookmark`, 'fa-right-left');
+});
+['#frFind', '#frReplace'].forEach(sel => $(sel).addEventListener('input', renderFrPreview));
+document.querySelectorAll('#frForm input[type=checkbox]').forEach(c => c.addEventListener('change', renderFrPreview));
+$('#frModal').addEventListener('click', (e) => {
+  if (e.target.closest('[data-close]')) $('#frModal').classList.remove('open');
 });
 
 /* =========================================================
