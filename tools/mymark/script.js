@@ -265,6 +265,33 @@ const $ = (s) => document.querySelector(s);
 function esc(str = '') {
   return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
+// Chuẩn hoá URL để so trùng: bỏ http/https, www, dấu / cuối, #..., tham số theo dõi (utm_, fbclid...)
+// "https://www.abc.com/a/?utm_source=fb" và "http://abc.com/a" → cùng 1 key "abc.com/a"
+function normUrl(u) {
+  try {
+    const x = new URL(String(u).trim());
+    let host = x.hostname.toLowerCase().replace(/^www\./, '');
+    // youtu.be/ID, m.youtube.com, youtube.com/shorts/ID → youtube.com/watch?v=ID
+    if (/^(m\.|music\.)?youtube\.com$|^youtu\.be$/.test(host)) {
+      const id = host === 'youtu.be' ? x.pathname.slice(1).split('/')[0]
+        : x.searchParams.get('v') || (x.pathname.match(/^\/(shorts|embed|live)\/([^/?#]+)/) || [])[2];
+      if (id) return 'youtube.com/watch?v=' + id;
+      host = 'youtube.com';
+    }
+    [...x.searchParams.keys()].forEach(k => {
+      if (/^(utm_.*|fbclid|gclid|igshid|si)$/i.test(k)) x.searchParams.delete(k);
+    });
+    x.searchParams.sort();
+    const q = x.searchParams.toString();
+    return host + (x.port ? ':' + x.port : '') + x.pathname.replace(/\/+$/, '') + (q ? '?' + q : '');
+  } catch { return String(u).trim().toLowerCase(); }
+}
+// Tìm bookmark trùng link (trừ chính cái đang sửa)
+function findDup(url, exceptId = null) {
+  const key = normUrl(url);
+  return url.trim() ? bookmarks.find(b => b.id !== exceptId && normUrl(b.url) === key) : null;
+}
+
 function getDomain(url) {
   try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; }
 }
@@ -493,6 +520,7 @@ function openModal(bm = null) {
   updateThumbPreview();
   metaFor = bm?.url || ''; autoTitle = ''; autoThumb = '';   // sửa bookmark cũ: chưa đổi URL thì khỏi lấy lại
   $('#metaSpin').classList.add('hidden');
+  checkDup();
   $('#bmModal').classList.add('open');
   setTimeout(() => $('#fUrl').focus(), 50);
 }
@@ -502,6 +530,8 @@ $('#bmForm').addEventListener('submit', (e) => {
   e.preventDefault();
   addTagFromInput(); // lỡ gõ tag mà quên Enter
   const url = $('#fUrl').value.trim();
+  const dup = findDup(url, editingId);
+  if (dup && !confirm(`Link này đã có rồi ("${dup.title || getDomain(dup.url)}"). Vẫn lưu thêm?`)) return;
   const data = {
     url,
     title: $('#fTitle').value.trim() || getDomain(url),
@@ -551,6 +581,20 @@ $('#fabAdd').addEventListener('click', () => openModal());
 // Chỉ đóng popup khi bấm nút X (bấm ra ngoài không mất form nữa)
 $('#bmModal').addEventListener('click', (e) => {
   if (e.target.closest('[data-close]')) closeModal();
+});
+
+/* ----- 7a. Báo trùng link: gõ/dán URL là kiểm tra liền ----- */
+let dupBm = null;
+function checkDup() {
+  dupBm = findDup($('#fUrl').value, editingId);
+  const box = $('#dupWarn');
+  box.classList.toggle('hidden', !dupBm);
+  if (dupBm) box.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Link này có rồi: <b>${esc(dupBm.title || getDomain(dupBm.url))}</b>
+    <span class="text-gray-500">(${fmtDate(dupBm.date)})</span> · <button type="button" data-dup-open>Mở cái cũ</button>`;
+}
+$('#fUrl').addEventListener('input', checkDup);
+$('#dupWarn').addEventListener('click', (e) => {
+  if (e.target.closest('[data-dup-open]') && dupBm) openModal(dupBm);
 });
 
 /* ----- 7b. Tự lấy tiêu đề + thumbnail khi dán URL -----
@@ -698,10 +742,10 @@ $('#mainMenu').addEventListener('click', (e) => {
 function mergeBookmarks(data) {
   if (!Array.isArray(data)) data = data.bookmarks || [];
   if (!Array.isArray(data)) return 0;
-  const existing = new Set(bookmarks.map(b => b.url));
+  const existing = new Set(bookmarks.map(b => normUrl(b.url)));
   let added = 0;
   data.forEach(raw => {
-    if (!raw || !raw.url || existing.has(raw.url)) return;
+    if (!raw || !raw.url || existing.has(normUrl(raw.url))) return;
     // Viết tay cho tiện: tags ghi "a, b, c" cũng được
     const tags = Array.isArray(raw.tags) ? raw.tags.map(String)
       : typeof raw.tags === 'string' ? raw.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
@@ -714,7 +758,7 @@ function mergeBookmarks(data) {
       clickCount: Number(raw.clickCount) || 0,
       date: raw.date && !isNaN(new Date(raw.date)) ? new Date(raw.date).toISOString() : new Date().toISOString(),
     });
-    existing.add(raw.url); added++;
+    existing.add(normUrl(raw.url)); added++;
   });
   return added;
 }
