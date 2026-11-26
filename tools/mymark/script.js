@@ -612,15 +612,20 @@ function scheduleMeta() {
 
 async function fetchMeta() {
   const url = $('#fUrl').value.trim();
-  if (!authToken || !/^https?:\/\/[^\s/]+\.[^\s]+$/i.test(url) || url === metaFor) return;
+  if (!/^https?:\/\/[^\s/]+\.[^\s]+$/i.test(url) || url === metaFor) return;
+  if (!authToken) { console.warn('[MyMark meta] Chưa có vé (chưa sync được với server) → không lấy tiêu đề/ảnh'); return; }
   metaFor = url;
   $('#metaSpin').classList.remove('hidden');
   let m = null;
   try {
     const res = await fetch(`${META_URL}?url=${encodeURIComponent(url)}`,
       { headers: { Authorization: `Bearer ${authToken}` }, cache: 'no-store' });
-    if (res.ok) m = await res.json();
-  } catch {}
+    const body = await res.json().catch(() => ({}));
+    if (res.ok) m = body;
+    logMeta(url, res.status, body);
+  } catch (e) {
+    console.error(`[MyMark meta] Không gọi được Worker: ${url}`, e);
+  }
   if (metaFor !== url) return;   // trong lúc chờ đã dán URL khác → để lần sau lo
   $('#metaSpin').classList.add('hidden');
   if (!m || !$('#bmModal').classList.contains('open')) return;
@@ -630,6 +635,20 @@ async function fetchMeta() {
   if (m.image && (!th.value.trim() || th.value === autoThumb)) { th.value = autoThumb = m.image; updateThumbPreview(); }
 }
 $('#fUrl').addEventListener('input', scheduleMeta);
+
+// In nhật ký lấy meta ra Console (F12 → Console). Lấy hụt thì in màu vàng.
+function logMeta(url, status, body) {
+  const d = body.debug || {};
+  const ok = status === 200 && String(d.reason || '').startsWith('ok');
+  const label = status !== 200 ? `Worker lỗi ${status}` : (d.reason || '(Worker cũ, chưa có nhật ký)');
+  console.groupCollapsed(`%c[MyMark meta] ${ok ? 'OK' : 'HỤT'} · ${label} · ${url}`,
+    `color:${ok ? '#22c55e' : '#f59e0b'};font-weight:bold`);
+  console.log('Tiêu đề:', body.title || '(trống)');
+  console.log('Ảnh:', body.image || '(trống)');
+  (d.steps || []).forEach(st => console.log(`→ ${st.step}`, st));
+  if (status !== 200) console.log('Phản hồi:', body);
+  console.groupEnd();
+}
 
 /* =========================================================
    8. SỰ KIỆN TRÊN TRANG
