@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyMark – Tạo AUTH_HASH</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<style>
+  :root { --bg:#1e2127; --card:#23262d; --text:#e6e6e6; --muted:#9aa0aa; --accent:#5aa9ff; --warn:#ffb454; --ok:#5fd38d; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         background:var(--bg); color:var(--text); font-family:system-ui, sans-serif; padding:24px; }
+  .card { width:100%; max-width:520px; background:var(--card); border-radius:18px; padding:28px;
+          box-shadow: 8px 8px 18px #16181c, -8px -8px 18px #2a2e36; }
+  h1 { font-size:20px; margin:0 0 6px; display:flex; gap:10px; align-items:center; }
+  p.sub { color:var(--muted); margin:0 0 20px; font-size:14px; line-height:1.5; }
+  label { display:block; font-size:13px; color:var(--muted); margin:14px 0 6px; }
+  input, textarea { width:100%; padding:12px 14px; border:none; border-radius:12px; background:var(--bg);
+          color:var(--text); font-size:15px; box-shadow: inset 3px 3px 6px #16181c, inset -3px -3px 6px #2a2e36; }
+  textarea { font-family:ui-monospace, monospace; font-size:13px; resize:none; height:70px; }
+  button { margin-top:18px; width:100%; padding:12px; border:none; border-radius:12px; background:var(--card);
+           color:var(--accent); font-size:15px; font-weight:600; cursor:pointer;
+           box-shadow: 5px 5px 10px #16181c, -5px -5px 10px #2a2e36; display:flex; gap:8px; justify-content:center; align-items:center; }
+  button:active { box-shadow: inset 3px 3px 6px #16181c, inset -3px -3px 6px #2a2e36; }
+  button:disabled { opacity:.5; cursor:wait; }
+  .msg { margin-top:14px; font-size:13px; line-height:1.5; min-height:20px; }
+  .msg.warn { color:var(--warn); } .msg.ok { color:var(--ok); }
+  .out { display:none; }
+  .note { margin-top:18px; font-size:12px; color:var(--muted); line-height:1.6; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1><i class="fa-solid fa-key"></i> Tạo AUTH_HASH cho Worker</h1>
+  <p class="sub">Nhập mật khẩu mới của MyMark. Mã được tính ngay trên máy bro, không gửi đi đâu cả.</p>
+
+  <label for="p1">Mật khẩu (≥ 8 ký tự, có chữ + số)</label>
+  <input id="p1" type="password" autocomplete="new-password" placeholder="vd: kh4ngT0m">
+
+  <label for="p2">Nhập lại passphrase</label>
+  <input id="p2" type="password" autocomplete="new-password">
+
+  <button id="go"><i class="fa-solid fa-gears"></i> Tạo mã</button>
+  <div id="msg" class="msg"></div>
+
+  <div id="out" class="out">
+    <label for="hash">AUTH_HASH (dán vào Secret trên Cloudflare)</label>
+    <textarea id="hash" readonly></textarea>
+    <button id="copy"><i class="fa-regular fa-copy"></i> Copy</button>
+  </div>
+
+  <p class="note"><i class="fa-solid fa-circle-info"></i> Mã này là "dấu vân tay" của vé vào cửa, không giải mã được vault. Quên mật khẩu là mất luôn vault, nên lưu nó vào trình quản lý mật khẩu nha.</p>
+</div>
+
+<script>
+// PHẢI KHỚP với script.js của MyMark ở Phase 3
+const AUTH_SALT = "mymark-sync-auth-v1";
+const AUTH_ITER = 300000;
+
+const enc = new TextEncoder();
+const toHex = (buf) => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+
+// passphrase -> token (vé vào cửa)
+async function deriveToken(pass) {
+  const base = await crypto.subtle.importKey("raw", enc.encode(pass.trim().normalize("NFC")), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt: enc.encode(AUTH_SALT), iterations: AUTH_ITER, hash: "SHA-256" }, base, 256);
+  return toHex(bits);
+}
+
+// token -> AUTH_HASH (thứ Worker cầm)
+async function sha256Hex(str) {
+  return toHex(await crypto.subtle.digest("SHA-256", enc.encode(str)));
+}
+
+const $ = (id) => document.getElementById(id);
+function say(text, type) { $("msg").textContent = text; $("msg").className = "msg " + (type || ""); }
+
+$("go").onclick = async () => {
+  const p1 = $("p1").value, p2 = $("p2").value;
+  $("out").style.display = "none";
+  if (!window.crypto || !crypto.subtle) return say("Trình duyệt này không hỗ trợ Web Crypto, mở bằng Chrome nha.", "warn");
+  if (p1 !== p2) return say("2 ô mật khẩu không khớp.", "warn");
+  if (p1.trim().length < 8) return say("Mật khẩu ngắn quá, tối thiểu 8 ký tự.", "warn");
+  if (!/[a-zA-Z]/.test(p1) || !/[0-9]/.test(p1)) say("Nên có cả chữ lẫn số cho khó đoán. Vẫn tạo mã nhé.", "warn");
+  else say("Đang tính (vài giây)...");
+
+  $("go").disabled = true;
+  try {
+    const token = await deriveToken(p1);
+    $("hash").value = await sha256Hex(token);
+    $("out").style.display = "block";
+    say("Xong! Copy mã bên dưới.", "ok");
+  } catch (e) {
+    say("Lỗi: " + e.message, "warn");
+  } finally {
+    $("go").disabled = false;
+  }
+};
+
+$("copy").onclick = async () => {
+  await navigator.clipboard.writeText($("hash").value);
+  say("Đã copy AUTH_HASH.", "ok");
+};
+</script>
+</body>
+</html>
